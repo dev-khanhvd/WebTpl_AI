@@ -16,7 +16,8 @@ https://python.langchain.com/docs/how_to/installation/
 
  ## Cài đăt streamlit (https://pypi.org/project/streamlit/)  
     - Streamlit là một framework Python giúp tạo ứng dụng web nhanh chóng, chủ yếu dành cho machine learning và data science mà không cần dùng HTML, CSS hay JavaScript.
-    - Cài đặt env (Dùng để lưu cấu hình chung)  
+
+ ## Cài đặt env (Dùng để lưu cấu hình chung)  
         pip install python-dotenv  
         python -c "import os; from dotenv import load_dotenv; load_dotenv(); print(os.getenv('OPENAI_API_KEY'))" (Kiểm tra xem key có hoạt động không)
 

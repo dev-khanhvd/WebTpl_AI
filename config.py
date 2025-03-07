@@ -8,6 +8,8 @@ FOLDER_STRUCTURE = os.getenv("FOLDER_STRUCTURE")
 BASE_DIR = os.getenv("BASE_DIR")
 CONTENT_TEMPLATE_JSON = os.getenv("CONTENT_TEMPLATE_JSON")
 VECTOR_DB_PATH = "./vector_db/chroma_db"
-MODEL_NAME = "gpt-4o-mini"
-TEMPERATURE = 0.7
-TOP_K_RESULTS = 3
+
+MODEL_NAME = "DeepSeek-R1-Distill-Qwen-7B"
+TEMPERATURE = 0.28
+MAX_TOKEN = 100
+API_URL = "http://localhost:4891/v1/chat/completions"
