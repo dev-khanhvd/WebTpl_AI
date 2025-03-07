@@ -71,7 +71,7 @@ https://python.langchain.com/docs/how_to/installation/
 
 
 ## Hiện tại đang xử lý AI chạy trên local bằng con DeepSeek R1 Distill
-https://huggingface.co/mradermacher/oh-dcft-v3.1-claude-3-5-sonnet-20241022-GGUF
+https://huggingface.co/deepseek-ai/DeepSeek-R1
 
 ## Đang dùng GPT4ALL để xử lý training cho con AI này. Docs đọc ở đây
 https://github.com/nomic-ai/gpt4all
