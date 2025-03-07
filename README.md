@@ -15,7 +15,7 @@ https://python.langchain.com/docs/how_to/installation/
         pip install langchain-community
 
  ## Cài đăt streamlit (https://pypi.org/project/streamlit/)  
-    - Streamlit là một framework Python giúp tạo ứng dụng web nhanh chóng, chủ yếu dành cho machine learning và data science mà không cần dùng HTML, CSS hay JavaScript. Demo này tạm thời sử dụng call API của Deepseek - R1
+    - Streamlit là một framework Python giúp tạo ứng dụng web nhanh chóng, chủ yếu dành cho machine learning và data science mà không cần dùng HTML, CSS hay JavaScript.
     - Cài đặt env (Dùng để lưu cấu hình chung)  
         pip install python-dotenv  
         python -c \"import os; from dotenv import load_dotenv; 
