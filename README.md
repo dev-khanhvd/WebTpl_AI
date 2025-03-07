@@ -18,9 +18,7 @@ https://python.langchain.com/docs/how_to/installation/
     - Streamlit là một framework Python giúp tạo ứng dụng web nhanh chóng, chủ yếu dành cho machine learning và data science mà không cần dùng HTML, CSS hay JavaScript.
     - Cài đặt env (Dùng để lưu cấu hình chung)  
         pip install python-dotenv  
-        python -c \"import os; from dotenv import load_dotenv; 
-        load_dotenv();
-        print(os.getenv('OPENAI_API_KEY'))" (Kiểm tra xem key có hoạt động không)
+        python -c "import os; from dotenv import load_dotenv; load_dotenv(); print(os.getenv('OPENAI_API_KEY'))" (Kiểm tra xem key có hoạt động không)
 
 ## Embeddings & Vector Database  
     - Embeddings: Embeddings là một cách để chuyển đổi văn bản, hình ảnh thành một vector số (mảng số thực)  
