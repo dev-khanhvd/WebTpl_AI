@@ -1,8 +1,6 @@
 # Sử dụng LangChain framework
 https://python.langchain.com/docs/how_to/installation/
 
-# AI local: https://github.com/nomic-ai/gpt4all?tab=readme-ov-file
-
 # Cách cài đặt  
     - Cài đặt python: https://www.python.org/downloads/ (version mới nhất: 3.13.2)  
     - Cài đặt pip: https://pip.pypa.io/en/stable/installation/
@@ -71,8 +69,10 @@ https://python.langchain.com/docs/how_to/installation/
     -  Thư viện Python dùng để lấy dữ liệu ra khỏi các file HTML và XML  
         pip install requests beautifulsoup4
 
-## Hiện tại đang xử lý AI bằng con claude sonnet 3.5
+
+## Hiện tại đang xử lý AI chạy trên local bằng con DeepSeek R1 Distill
 https://huggingface.co/mradermacher/oh-dcft-v3.1-claude-3-5-sonnet-20241022-GGUF
 
 ## Đang dùng GPT4ALL để xử lý training cho con AI này. Docs đọc ở đây
-https://github.com/nomic-ai/gpt4all https://docs.gpt4all.io/
+https://github.com/nomic-ai/gpt4all
+https://docs.gpt4all.io/
