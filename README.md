@@ -7,7 +7,7 @@ https://python.langchain.com/docs/how_to/installation/
 
  ## Khi cài đặt, mặc định python sẽ cài đặt pip (pip 23.2.1)  
     - Trong TH không tự động cài đặt thì dùng:  
-        python -m pip install \--upgrade pip   (Mặc định lấy version pip mới nhất để cài đặt)
+        python -m pip install --upgrade pip   (Mặc định lấy version pip mới nhất để cài đặt)
 
     - Khởi tạo langchain framework, dùng PyCharm  
         pip install langchain  
@@ -57,8 +57,8 @@ https://python.langchain.com/docs/how_to/installation/
             https://github.com/chroma-core/chroma/issues/189#issuecomment-1454418844
 
     - Chạy lại 2 câu lệnh như ở dưới là done:  
-        pip install \--no-cache-dir hnswlib  
-        pip install \--q chromadb
+        pip install --no-cache-dir hnswlib  
+        pip install --q chromadb
 
 ## Cài đặt PyWebCoppy  
     pip install pywebcopy  
