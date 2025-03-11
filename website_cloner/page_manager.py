@@ -14,38 +14,19 @@ logger = logging.getLogger(__name__)
 
 
 class PageManager(scrapy.Spider):
-    name = "page_manager"
+    name = 'page_manager'
 
-    page_types = {
-        'homepage': {'pattern': r'^/?$', 'found': False},
-        'search': {'pattern': r'^/search?$', 'found': False},
-        "category": {
-            'pattern': r'^/collections/[^/]+$|^/category/[^/]+$',
-            'found': False,
-            'index_file': True
-        },
-        'product': {'pattern': r'^/products/[^/]+$|^/product/[^/]+$', 'found': False},
-        'cart': {'pattern': r'^/cart$|^/gio-hang$', 'found': False},
-        'checkout': {'pattern': r'^/checkout$|^/thanh-toan$', 'found': False},
-        'blog': {
-            'pattern': r'^/blogs(/[^/]+)?$|^/tin-tuc$',
-            'found': False,
-            'index_file': True
-        },
-        'blog_article': {'pattern': r'^/blogs/[^/]+/[^/]+$|^/tin-tuc/[^/]+$', 'found': False},
-        'info_page': {'pattern': r'^/pages/[^/]+$|^/gioi-thieu$|^/lien-he$', 'found': False}
-    }
+    def __init__(self, base_url, output_folder, page_rules, *args, **kwargs):
 
-    def __init__(self, base_url, output_folder, *args, **kwargs):
         super(PageManager, self).__init__(*args, **kwargs)
         # Ensure base URL has protocol
         if not base_url.startswith(('http://', 'https://')):
             base_url = 'https://' + base_url
-
         self.start_urls = [base_url]
         self.base_url = base_url
         self.output_folder = output_folder
         self.visited_urls = set()
+        self.page_types = page_rules
         self.urls_to_crawl = []
         self.type_mapping = json.loads(PAGE_TYPE_MAPPING)
         self.results = {
@@ -180,9 +161,21 @@ class PageManager(scrapy.Spider):
         # Create parent directory if it doesn't exist
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-        # Save the processed content
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(formatted_content)
+        # Check if file exists and has content before writing
+        flag_content = True
+        if os.path.exists(file_path):
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                if content:  # If file already has content
+                    flag_content = False
+                    logger.info(f"File already has content, skipping: {file_path}")
+
+        # Save the processed content if file doesn't exist or is empty
+        if flag_content:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(formatted_content)
+            logger.info(f"Saved content for {page_type}: {file_path}")
+
 
         # If it's a category or blog_category, also save to index file
         if index_file_path:
@@ -191,49 +184,21 @@ class PageManager(scrapy.Spider):
                 formatted_content2 = self.page_render_components('blog_index', result)
 
             os.makedirs(os.path.dirname(index_file_path), exist_ok=True)
-            with open(index_file_path, 'w', encoding='utf-8') as f:
-                f.write(formatted_content2)
-            logger.info(f"Saved index file for {page_type}: {index_file_path}")
 
-    def extract_layout_components(self, response):
-        """Extract header and footer from page"""
-        soup = BeautifulSoup(response.text, 'html.parser')
+            # Check if file exists and has content before writing
+            flag_content_index = True
+            if os.path.exists(index_file_path):
+                with open(index_file_path, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                    if content:
+                        flag_content_index = False
+                        logger.info(f"File already has content, skipping: {index_file_path}")
 
-        folder_manager = FolderManager(self.base_url)
-        folder_manager.create_css_files(self.output_folder, soup)
-
-        # Extract header
-        header = soup.find('header') or soup.find(class_=re.compile(r'header|top-bar'))
-        if header and not self.results['pages'].get('header'):
-            header_path = os.path.join(self.output_folder, "view/layout/header.twig")
-            os.makedirs(os.path.dirname(header_path), exist_ok=True)
-            with open(header_path, 'w', encoding='utf-8') as f:
-                f.write(str(header.prettify()))
-            self.results['pages']['header'] = {
-                'file': header_path
-            }
-
-        # Extract footer
-        footer = soup.find('footer') or soup.find(class_=re.compile(r'footer|bottom-bar'))
-        if footer and not self.results['pages'].get('footer'):
-            footer_path = os.path.join(self.output_folder, "view/layout/footer.twig")
-            os.makedirs(os.path.dirname(footer_path), exist_ok=True)
-            with open(footer_path, 'w', encoding='utf-8') as f:
-                f.write(str(footer.prettify()))
-            self.results['pages']['footer'] = {
-                'file': footer_path
-            }
-
-        # Create layout file that includes header and footer
-        if header and footer and not self.results['pages'].get('layout'):
-            layout_path = os.path.join(self.output_folder, "view/layout/layout.twig")
-            os.makedirs(os.path.dirname(layout_path), exist_ok=True)
-            layout_content = self.layout_render_component()
-            with open(layout_path, 'w', encoding='utf-8') as f:
-                f.write(layout_content)
-            self.results['pages']['layout'] = {
-                'file': layout_path
-            }
+            # Save the processed content if file doesn't exist or is empty
+            if flag_content_index:
+                with open(index_file_path, 'w', encoding='utf-8') as f:
+                    f.write(formatted_content2)
+                logger.info(f"Saved content for {page_type}: {index_file_path}")
 
     def page_render_components(self, page_type, content):
         page_titles = {
@@ -242,9 +207,20 @@ class PageManager(scrapy.Spider):
             "product_index": "translate('Danh sách sản phẩm')",
             "category": "category.name",
             "product": "product.name",
-            "blog": "category.name",
+            "order_cart": "translate('Giỏ hàng')",
+            "order_checkout": "translate('Thanh toán')",
+            "order_search": "translate('Tra cứu đơn hàng')",
             "blog_index": "translate('Danh sách bài viết')",
-            "blog_article": "news.title | striptags"
+            "blog": "category.name",
+            "blog_article": "news.title | striptags",
+            "contact": "translate('Liên hệ')",
+            "user_signin": "translate('Đăng nhập')",
+            "user_signup": "translate('Đăng ký')",
+            "map": "translate('Hệ thống cửa hàng')",
+            "wish_list": "translate('Yêu thích')",
+            "promotion_index": "translate('Chương trình khuyến mãi')",
+            "promotion_list": "promotion.name",
+            "landing_page": "Landing page",
         }
         page_title = page_titles.get(page_type, "Page type not recognized.")
         if page_title == "Page type not recognized.":
@@ -298,7 +274,47 @@ class PageManager(scrapy.Spider):
                 </html>
              """).strip()
 
-def fetch_all_pages(url, output_folder):
+    def extract_layout_components(self, response):
+        """Extract header and footer from page"""
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        folder_manager = FolderManager(self.base_url)
+        folder_manager.create_css_files(self.output_folder, soup)
+
+        # Extract header
+        header = soup.find('header') or soup.find(class_=re.compile(r'header|top-bar'))
+        if header and not self.results['pages'].get('header'):
+            header_path = os.path.join(self.output_folder, "view/layout/header.twig")
+            os.makedirs(os.path.dirname(header_path), exist_ok=True)
+            with open(header_path, 'w', encoding='utf-8') as f:
+                f.write(str(header.prettify()))
+            self.results['pages']['header'] = {
+                'file': header_path
+            }
+
+        # Extract footer
+        footer = soup.find('footer') or soup.find(class_=re.compile(r'footer|bottom-bar'))
+        if footer and not self.results['pages'].get('footer'):
+            footer_path = os.path.join(self.output_folder, "view/layout/footer.twig")
+            os.makedirs(os.path.dirname(footer_path), exist_ok=True)
+            with open(footer_path, 'w', encoding='utf-8') as f:
+                f.write(str(footer.prettify()))
+            self.results['pages']['footer'] = {
+                'file': footer_path
+            }
+
+        # Create layout file that includes header and footer
+        if header and footer and not self.results['pages'].get('layout'):
+            layout_path = os.path.join(self.output_folder, "view/layout/layout.twig")
+            os.makedirs(os.path.dirname(layout_path), exist_ok=True)
+            layout_content = self.layout_render_component()
+            with open(layout_path, 'w', encoding='utf-8') as f:
+                f.write(layout_content)
+            self.results['pages']['layout'] = {
+                'file': layout_path
+            }
+
+def fetch_all_pages(url, output_folder, page_rules):
     """Run Scrapy crawler to fetch all pages"""
     process = CrawlerProcess(settings={
         "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
@@ -306,7 +322,17 @@ def fetch_all_pages(url, output_folder):
         "DOWNLOAD_DELAY": 1,  # Be polite
         "LOG_LEVEL": "INFO"
     })
-    process.crawl(PageManager, base_url=url, output_folder=output_folder)
+    try:
+        process.crawl(PageManager,
+                      base_url=url,
+                      output_folder=output_folder,
+                      page_rules=page_rules)
+        process.start()
+    except Exception as e:
+        print(f"ERROR: Exception during crawl: {e}")
+        import traceback
+        traceback.print_exc()
+
     process.start()
 
     return {

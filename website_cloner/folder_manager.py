@@ -1,4 +1,3 @@
-# website_cloner/folder_manager.py
 import os
 import json
 from config import CONTENT_TEMPLATE_JSON
@@ -40,11 +39,12 @@ class FolderManager:
                 # Handle special config file
                 file_path = os.path.join(base_path, value)
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-                # Create and initialize template.json file
-                with open(file_path, "w", encoding="utf-8") as ft:
-                    json.dump(self.content_template, ft, ensure_ascii=False, indent=4)
-                print(f"Đã tạo file cấu hình: {file_path}")
+                flag = self.check_file_exist(file_path)
+                if flag:
+                    # Create and initialize template.json file
+                    with open(file_path, "w", encoding="utf-8") as ft:
+                        json.dump(self.content_template, ft, ensure_ascii=False, indent=4)
+                    print(f"Đã tạo file cấu hình: {file_path}")
             else:
                 # Create folder
                 folder_path = os.path.join(base_path, key)
@@ -59,12 +59,25 @@ class FolderManager:
                     # Create empty files
                     for file in value:
                         file_path = os.path.join(folder_path, file)
-                        # Create parent directories if needed
-                        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                        # Create the empty file
-                        open(file_path, "w").close()
-                        print(f"Đã tạo file: {file_path}")
+                        flag = self.check_file_exist(file_path)
+                        if flag:
+                            # Create parent directories if needed
+                            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                            # Create the empty file
+                            open(file_path, "w").close()
+                            print(f"Đã tạo file: {file_path}")
         return True
+
+    def check_file_exist(self, file_path):
+        flag_content = True
+        if os.path.exists(file_path):
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                if content:
+                    flag_content = False
+
+
+        return flag_content
 
     # def save_content_to_file(self, content, file_path, content_type=None):
     #     """Save extracted content to the appropriate file"""
