@@ -1,46 +1,75 @@
-import requests
-from config import API_URL, MODEL_NAME, TEMPERATURE, MAX_TOKEN
+import platform
+import subprocess
+from llama_cpp import Llama
 
-def menu_agent():
-    print("\nMenu xử lý fill logic website:")
-    options = [
-        'Trang chủ',
-        'Danh mục sản phẩm',
-        'Chi tiết sản phẩm',
-        'Giỏ hàng',
-        'Thanh toán',
-        'Thanh toán thành công',
-    ]
-    actions = {
-        1: lambda: print("Xử lý logic trang chủ"),
-        2: lambda: print("Xử lý danh mục sản phẩm"),
-        3: lambda: print("Xử lý chi tiết sản phẩm"),
-        4: lambda: print("Xử lý giỏ hàng"),
-        5: lambda: print("Xử lý thanh toán"),
-        6: lambda: print("Xử lý thanh toán thành công"),
-    }
-    for i, option in enumerate(options, 1):
-        print(f"{i}. {option}")
-    while True:
-        menu_choice = input("Nhập số thứ tự trên menu để thao tác (hoặc 'exit' để thoát): ").strip()
+from agents.home_page import HomePage
 
-        if menu_choice.lower() == "exit" or not menu_choice:
-            print("👋 Thoát module xử lý logic!")
-            break
+class BaseAgent:
+    def __init__(self, base_dir):
+        self.base_dir = base_dir
+    def menu_agent(self):
+        print("\n=== Menu xử lý fill logic website ===")
+        options = [
+            'Trang chủ',
+            'Danh mục sản phẩm',
+            'Chi tiết sản phẩm',
+            'Giỏ hàng',
+            'Thanh toán',
+            'Thanh toán thành công',
+        ]
+        while True:
+            self.clear_screen()
+            print("\n=== Menu xử lý fill logic website ===")
+            for i, option in enumerate(options):
+                print(f"{i + 1}. {option}")
 
-        if not menu_choice.isdigit() or (choice := int(menu_choice)) not in actions:
-            print("Lỗi: Vui lòng nhập một số hợp lệ!")
-            continue
+            menu_choice = input("Nhập số thứ tự trên menu để thao tác (hoặc 'exit' để thoát): ").strip()
 
-        actions[choice]()
+            if menu_choice.lower() == "exit" or not menu_choice:
+                print("👋 Thoát module xử lý logic!")
+                break
 
-def api_manager():
-    data = {
-        "model": MODEL_NAME,
-        "messages": [{"role":"user","content":"Who is Lionel Messi?"}],
-        "max_tokens": MAX_TOKEN,
-        "temperature": TEMPERATURE
-    }
-    result = requests.post(API_URL, json=data)
-    response = result.json()
-    print(response["choices"][0]['message']['content'].strip())
+            if not menu_choice.isdigit():
+                print("Lỗi: Vui lòng nhập một số hợp lệ!")
+                continue
+
+            menu_choice = int(menu_choice)
+
+            if menu_choice == 1:
+                home_page = HomePage(self.base_dir)
+                banner_home = home_page.get_home_page_content()
+                print(banner_home)
+                break
+            elif menu_choice == 2:
+                continue
+            elif menu_choice == 3:
+                continue
+            elif menu_choice == 4:
+                continue
+            elif menu_choice == 5:
+                continue
+            elif menu_choice == 6:
+                continue
+            else:
+                break
+
+    # def ai_processing(self, user_question):
+    #     model_path = "C:/Users/phogu/AppData/Local/nomic.ai/GPT4All/deepseek-coder-6.7b-base.Q4_0.gguf"
+    #     llm = Llama(
+    #         model_path=model_path,
+    #         n_ctx=4096,  # Context size
+    #         n_gpu_layers=32  # Adjust based on your GPU capability
+    #     )
+    #
+    #     input_text = "#write a quick sort algorithm"
+    #     output = llm(input_text, max_tokens=500)
+    #
+    #     # Print the generated text
+    #     print(output['choices'][0]['text'])
+
+    def clear_screen(self):
+        """Clear the terminal screen based on the operating system."""
+        if platform.system() == "Windows":
+            subprocess.call('cls', shell=True)
+        else:  # For Linux and MacOS
+            subprocess.call('clear', shell=True)

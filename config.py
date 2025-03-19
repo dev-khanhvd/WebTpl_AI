@@ -13,7 +13,7 @@ PAGE_TYPE_MAPPING = os.getenv("PAGE_TYPE_MAPPING")
 
 VECTOR_DB_PATH = "./vector_db/chroma_db"
 
-MODEL_NAME = "DeepSeek-R1-Distill-Qwen-7B"
+MODEL_NAME = "mistral_7b_0-3_oh-dcft-v3.1-claude-3-5-sonnet-20241022-Q4_0"
 TEMPERATURE = 0.28
-MAX_TOKEN = 100
+MAX_TOKEN = 400
 API_URL = "http://localhost:4891/v1/chat/completions"

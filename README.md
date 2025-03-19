@@ -60,18 +60,21 @@ https://python.langchain.com/docs/how_to/installation/
         pip install --no-cache-dir hnswlib  
         pip install --q chromadb
 
-## Cài đặt PyWebCoppy  
-    pip install pywebcopy  
-    pip install lxml_html_clean (Thư viện của PyWebCoppy)
+## Cài đặt Scrapy: https://scrapy.org/
+    pip install scrapy
 
-## Cài đặt BeautifulSoup: 
-    -  Thư viện Python dùng để lấy dữ liệu ra khỏi các file HTML và XML  
+## Cài đặt BeautifulSoup: https://www.crummy.com/software/BeautifulSoup/bs4/doc/
         pip install requests beautifulsoup4
 
 
-## Hiện tại đang xử lý AI chạy trên local bằng con DeepSeek R1 Distill
-https://huggingface.co/deepseek-ai/DeepSeek-R1
+## Hiện tại đang xử lý AI chạy trên local bằng con mistral_7b_0-3_oh-dcft-v3.1-claude-3-5-sonnet-20241022
+https://huggingface.co/tensorblock/mistral_7b_0-3_oh-dcft-v3.1-claude-3-5-sonnet-20241022-GGUF
 
 ## Đang dùng GPT4ALL để xử lý training cho con AI này. Docs đọc ở đây
 https://github.com/nomic-ai/gpt4all
 https://docs.gpt4all.io/
+
+## Xử lý embeddings + LLaMa để trainning cho AI
+    // llama-cpp-python → Chạy mô hình LLaMA trên CPU/GPU
+    // sentence-transformers → Tạo embeddings từ văn bản
+    pip install llama-cpp-python sentence-transformers

@@ -1,0 +1,13 @@
+[
+    {
+        "question": "Is this a block banner?",
+        "answer": "If there are multiple <div class='home-slider-item swiper-slide'> containing <a> and <img> tags, this is a block banner.",
+        "logic": "Check if there are multiple items in that block?. Create a variable to store the banner location with a random name, for example: BANNER_HOME.. If there are multiple items in that block, define variable: {% set banner_home = getBannerByPositionCode('BANNER_HOME') %}, If there is only one item in that block, define variable: {% set banner_home = getCurrentBannerByCode('BANNER_HOME', {'limit':1}) %}. Check if the declared banner is not empty then render HTML"
+    },
+    {
+        "question": "How to display banner list?",
+        "answer": "Use the loop to render the list banner",
+        "logic": "In a banner there are the following attributes: viewLink, target, imageSrc, name, description, intro. Use {% for b in banner_home %} to loop through each banner. The banner attributes correspond to the tags described above (If <a> tag set: href = {{ b.viewLink }}, target = {{ b.target }}, aria-label must be {{ b.name }}, title must be {{ b.name }}. If <img> tag: set src = {{ b.imageSrc }},alt  must be {{ b.name }})",
+        "example": "{% set banner_home = getBannerByPositionCode('BANNER_HOME') %} {% if banner_home is not empty %}\n    {% for b in banner_home %}\n        <a {{ b.target }} href='{{ b.viewLink }}' title='{{ b.name }}'>\n            <img loading='lazy' src='{{ b.imageSrc }}' alt='{{ b.name }}'>\n        </a>\n    {% endfor %}\n{% endif %}"
+    }
+]
