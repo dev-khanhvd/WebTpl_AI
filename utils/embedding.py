@@ -5,7 +5,6 @@ from sentence_transformers import SentenceTransformer
 
 from vector_db.chroma_db import ChromaDB
 from llama_cpp import Llama
-from bs4 import BeautifulSoup
 
 class Embedding:
     def __init__(self, base_dir):
@@ -15,7 +14,8 @@ class Embedding:
         chroma_db = ChromaDB(self.base_dir)
         self.collection = chroma_db.chroma_collection()
         self.types = [
-            'home_banner_main_block'
+            'home_banner_main_block',
+            'home_products_list_block'
         ]
     def save_embeddings(self):
         with open(self.data_json, "r", encoding="utf-8") as file:
@@ -100,7 +100,7 @@ class Embedding:
         all_items = self.collection.get()
         return json.dumps(all_items, indent=2)
 
-    def process_question(self, user_question, type, items = None):
+    def process_question(self, user_question, type = None, items = None):
         print(f"🔍 Đang xử lý câu hỏi: {user_question}")
         best_match = self.get_answer_with_details(user_question)
         pattern = r"```(?:twig)?\n([\s\S]*?)```"
@@ -108,6 +108,10 @@ class Embedding:
             print(f"✅ Đã tìm thấy câu trả lời phù hợp: {best_match['question']}")
             generated_code = self.generate_code_with_llama(best_match,type ,items)
             if type == 'home_banner_main_block':
+                content = re.search(pattern, generated_code[type])
+                if content:
+                    return content.group(1)
+            elif type == 'home_products_list_block':
                 content = re.search(pattern, generated_code[type])
                 if content:
                     return content.group(1)
@@ -120,23 +124,28 @@ class Embedding:
                 "message": "Không tìm thấy câu trả lời phù hợp."
             }
 
-    def generate_code_with_llama(self, best_match, type, items = None):
+    def generate_code_with_llama(self, best_match, type = None, items = None):
         model_path = "C:\\Users\\phogu\\AppData\\Local\\nomic.ai\\GPT4All\\mistral_7b_0-3_oh-dcft-v3.1-claude-3-5-sonnet-20241022-Q4_0.gguf"
         llm = Llama(
             model_path=model_path,
             n_ctx=4096,  # Context size
             n_gpu_layers=32)
+        text = ''
+        if type == "home_banner_main_block":
+            text = 'banner'
+        elif type == "home_products_list_block":
+            text = 'products'
 
         if not best_match:
                 return "🚫 Không tìm thấy logic phù hợp."
 
-        prompt = f"""Dựa trên thông tin sau, hãy tạo mã Twig để hiển thị banner:
+        prompt = f"""Based on the following information, generate the Twig code to display {text}:
                     - Logic: {best_match['logic']}
                     - Example: {best_match['example']}
                    Use twig to loop {items} with the logic code above, no code description.
                     """
 
-        print("Đang xử lý, vui lòng chờ trong giây lát!")
+        print("Processing, please wait a moment!")
 
         response = llm(prompt, max_tokens=1000)
 

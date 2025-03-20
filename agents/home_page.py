@@ -1,4 +1,5 @@
 import json
+import re
 from config import PAGE_TYPE_MAPPING
 from bs4 import BeautifulSoup
 from utils.embedding import Embedding
@@ -10,34 +11,21 @@ class HomePage:
         self.file_path = self.base_dir + '\\' + self.template_mapping['homepage']
 
         # Define banner slide home
-        self.main_banner_container_identifiers = [
-            {'class_contains': 'home-slider'},
-            {'class_contains': 'slider-home'},
-            {'id_contains': 'home-slider'},
-            {'id_contains': 'slider-home'}
+        self.main_banner_wrapper_patterns = [
+            'swiper-wrapper',
         ]
-        self.main_wrapper_identifiers = [
-            {'class_contains': '-wrapper'},
-            {'class_contains': 'wrapper'},
-        ]
-        self.main_item_identifiers = [
-            {'class_contains': '-item'},
-            {'class_contains': '-items'},
-            {'class_contains': 'item'},
-            {'class_contains': 'items'},
+        self.main_banner_item_keywords = [
+            'home-slider-item',
         ]
 
         # Define product home
-        self.main_product_list_container_identifiers = [
-            {'class_contains': '-product-list'},
-            {'class_contains': 'product-list'},
-            {'id_contains': '-product-list'},
-            {'id_contains': 'product-list'}
+        self.main_product_wrapper_patterns = [
+            'home-product-list',
+            'home-product-list-wrapper',
+            'home-product-list-slider'
         ]
-        self.main_product_item_identifiers = [
-            {'class_contains': '-items'},
-            {'class_contains': 'product-items'},
-            {'class_contains': 'product-items'},
+        self.main_product_item_keywords = [
+            'product-item',
         ]
 
     def get_home_page_content(self):
@@ -48,88 +36,103 @@ class HomePage:
                 self.detect_product_list_home(template_content)
 
     def detect_banner_blocks(self, content):
-        soup = BeautifulSoup(content, 'html.parser')
-        banner_container = None
-        for rule in self.main_banner_container_identifiers:
-            if 'class_contains' in rule:
-                elements = soup.find_all(class_=lambda c: c and rule['class_contains'] in c)
-                if elements:
-                    banner_container = elements[0]
-                    break
-            elif 'id_contains' in rule:
-                elements = soup.find_all(id=lambda i: i and rule['id_contains'] in i)
-                if elements:
-                    banner_container = elements[0]
-                    break
-
-        if not banner_container:
-            return None
-
-        wrapper = None
-        for rule_wrapper in self.main_wrapper_identifiers:
-            elements = banner_container.find_all(class_=lambda c: c and rule_wrapper['class_contains'] in c)
-            if elements:
-                wrapper = elements[0]
-                break
-
-        if not wrapper:
-            # If no wrapper found, use the container itself as wrapper
-            wrapper = banner_container
-
-        # Find items
-        items = []
-        for rule_item in self.main_item_identifiers:
-            elements = wrapper.find_all(class_=lambda c: c and rule_item['class_contains'] in c)
-            if elements:
-                items = elements
-                break
-
-        if not items or len(items) == 0:
-            return None
-
-        # Extract one representative item
-        banner_item = str(items[0])
-        wrapper.clear()
-
         question = "How to display banner list?"
-        embedings = Embedding(self.base_dir)
-        result = embedings.process_question(question, 'home_banner_main_block', banner_item)
-        if result:
-            twig_soup = BeautifulSoup(f"\n{result}\n", "html.parser")
-            wrapper.insert_before(twig_soup)
+        content_soup = self.detect_position_home(self.main_banner_wrapper_patterns, self.main_banner_item_keywords, content, question, 'home_banner_main_block')
+        if content_soup:
+            self.update_content_home_page(content_soup)
 
-        self.detect_product_list_home(soup)
+    def detect_product_list_home(self, content):
+        question = "How to display products list?"
+        content_soup = self.detect_position_home(self.main_product_wrapper_patterns, self.main_product_item_keywords, content, question, 'home_products_list_block')
+        if content_soup:
+            self.update_content_home_page(content_soup)
 
-    def detect_product_list_home(self, soup):
-        product_container = None
-        for rule in self.main_product_list_container_identifiers:
-            if 'class_contains' in rule:
-                elements = soup.find_all(class_=lambda c: c and rule['class_contains'] in c)
-                if elements:
-                    product_container = elements[0]
+    def detect_position_home(self, wrapper_pattern, item_pattern, content, question = None, type = None):
+        soup = BeautifulSoup(content, 'html.parser')
+
+        parent_wrapper = None
+        # Step 1: Find potential parent wrappers based on patterns
+        potential_parents = []
+        for pattern in wrapper_pattern:
+            elements = soup.find_all(class_=re.compile(pattern))
+            potential_parents.extend(elements)
+            # Step 2: For each potential parent, search for banner items
+            found_items = []
+            for parent in potential_parents:
+                # Try to find items directly
+                items = []
+                for keyword in item_pattern:
+                    found = parent.find_all(class_=re.compile(keyword), recursive=False)
+                    if found:
+                        items.extend(found)
+                # If no items found at the direct level, search deeper in the DOM
+                if items:
+                    found_items = items
+                    parent_wrapper = parent
                     break
-            elif 'id_contains' in rule:
-                elements = soup.find_all(id=lambda i: i and rule['id_contains'] in i)
-                if elements:
-                    product_container = elements[0]
-                    break
-        if not product_container:
+                # Step 3: If no items found at direct level, search deeper in the DOM
+            if not found_items:
+                for parent in potential_parents:
+                    # Search deeper
+                    items = []
+                    for keyword in item_pattern:
+                        found = parent.find_all(class_=re.compile(keyword))
+                        if found:
+                            items.extend(found)
+
+                    if items:
+                        found_items = items
+                        # Get the direct parent of the first item (which should be the wrapper)
+                        parent_wrapper = items[0].parent
+                        break
+
+                # Step 4: If found items, check for consistent classes and store information
+            if found_items:
+                items = str(found_items[0])
+                parent_wrapper.clear()
+
+                embedings = Embedding(self.base_dir)
+                result = embedings.process_question(question, type, items)
+                if result:
+                    twig_soup = BeautifulSoup(f"\n{result}\n", "html.parser")
+                    parent_wrapper.insert_before(twig_soup)
+
+                    return soup
             return None
 
-        items = []
-        for rule_item in self.main_product_item_identifiers:
-            elements = product_container.find_all(class_=lambda c: c and rule_item['class_contains'] in c)
-            if elements:
-                items = elements
+    def search_deeper_for_items(self, parent, item_keywords):
+        """
+        Search deeper in the DOM for elements matching the item keywords.
+        Returns a list of elements that have the same class and match the keywords.
+        """
+        found_items = []
+
+        # Get all potential elements
+        all_elements = parent.find_all(True)
+
+        # Group elements by class
+        class_groups = {}
+        for element in all_elements:
+            classes = element.get('class')
+            if not classes:
+                continue
+
+            # Check if any class matches our keywords
+            for keyword in item_keywords:
+                if any(re.search(keyword, cls) for cls in classes):
+                    class_key = tuple(sorted(classes))
+                    if class_key not in class_groups:
+                        class_groups[class_key] = []
+                    class_groups[class_key].append(element)
+                    break
+
+        # Find groups with multiple elements (these are likely our banner items)
+        for class_key, elements in class_groups.items():
+            if len(elements) > 1:
+                found_items = elements
                 break
 
-        if not items or len(items) == 0:
-            return None
-
-        # Extract one representative item
-        list_product_items = str(items[0])
-        print(list_product_items)
-
+        return found_items
     def update_content_home_page(self, content):
         if content:
             with open(self.file_path, 'w', encoding='utf-8') as f:
