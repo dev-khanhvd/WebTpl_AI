@@ -13,22 +13,17 @@ from website_cloner.website_rule.sapo_rule import SapoRule
 
 def main():
 
-    auto_embedding = Embedding(BASE_DIR)
-    auto_embedding.save_embeddings()
-    # auto_embedding.delete_embeddings(['id_0', 'id_1'])
-    # test = auto_embedding.get_embeddings()
-    # print(test)
-    #
-    # print("\n=== Website Cloner Tool ===")
-    #
+    print("\n=== Website Cloner Tool ===")
+
     options = [
         'Crawl content của web',
         'Fill code logic theo từng trang',
+        'Load training data',
     ]
 
     folder_url = ''
     while True:
-        clear_screen()
+        # clear_screen()
 
         print("\n=== Website Cloner Tool ===")
         for i, option in enumerate(options):
@@ -127,6 +122,14 @@ def main():
             # else:
             #     print("Lỗi: Chưa crawl website nào. Vui lòng chọn tùy chọn 1 trước!")
             break
+        elif menu_choice == 3:
+            auto_embedding = Embedding(BASE_DIR)
+            auto_embedding.save_embeddings()
+
+            # auto_embedding.delete_embeddings()
+            test = auto_embedding.get_embeddings()
+            print(test)
+            # break
         else:
             print("Lựa chọn không hợp lệ. Vui lòng thử lại!")
 

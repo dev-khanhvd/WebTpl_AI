@@ -37,8 +37,7 @@ class BaseAgent:
 
             if menu_choice == 1:
                 home_page = HomePage(self.base_dir)
-                banner_home = home_page.get_home_page_content()
-                print(banner_home)
+                home_page.get_home_page_content()
                 break
             elif menu_choice == 2:
                 continue
