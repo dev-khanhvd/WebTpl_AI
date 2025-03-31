@@ -15,4 +15,4 @@ VECTOR_DB_PATH = "./vector_db/chroma_db"
 
 MODEL_NAME = "gpt-4o-mini"
 TEMPERATURE = 0
-MAX_TOKEN = 500
+MAX_TOKEN = 2000

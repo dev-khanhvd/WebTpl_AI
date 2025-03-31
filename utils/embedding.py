@@ -49,6 +49,7 @@ class Embedding:
             sections = self.extract_sections(file_path)
 
             for section in sections:
+                print(section)
                 if not section['title'] or not section['description']:
                     continue
 
@@ -105,6 +106,7 @@ class Embedding:
                 # Save previous section if it has content
                 if current_section['title'] or current_section['description'] or current_section['example']:
                     sections.append(current_section)
+
                 current_section = {
                     'title': line[4:].strip(),
                     'example': None,
@@ -149,18 +151,18 @@ class Embedding:
     def delete_embeddings(self):
         self.chroma_client.delete_collection("data_training")
         # self.collection.delete(ids=ids)
-        print("✅ Đã xóa toàn bộ dữ liệu trong ChromaDB.")
+        print("✅ Deleted all data in ChromaDB.")
 
     def get_embeddings(self):
         all_items = self.collection.get()
         return json.dumps(all_items, indent=2)
 
     def process_question(self, user_question, type = None, items = None):
-        print(f"🔍 Đang xử lý câu hỏi: {user_question}")
+        print(f"🔍 Processing question: {user_question}")
         best_match = self.get_answer_with_details(user_question)
         pattern = r"```(?:twig)?\n([\s\S]*?)```"
         if best_match:
-            print(f"✅ Đã tìm thấy câu trả lời phù hợp: {best_match['question']}")
+            print(f"✅ The best answer has been found: {best_match['question']}")
             generated_code = self.generate_code_with_llama(best_match,type ,items)
             content = re.search(pattern, generated_code[type])
             if content:
@@ -168,10 +170,10 @@ class Embedding:
             return None
 
         else:
-            print("❌ Không tìm thấy câu trả lời phù hợp.")
+            print("❌ No matching logic found.")
             return {
                 "success": False,
-                "message": "Không tìm thấy câu trả lời phù hợp."
+                "message": "No matching logic found."
             }
 
     def generate_code_with_llama(self, best_match = None, type = None, items = None):
@@ -186,14 +188,16 @@ class Embedding:
             text = 'products'
 
         if not best_match:
-            return "🚫 Không tìm thấy logic phù hợp."
+            return "🚫 No matching logic found."
 
         prompt = f"""Based on the following information, generate the Twig code to display {text}:
                             - Example: {best_match['example']}
-                           Use twig to loop {items} with the logic code above, no code description. Keep html, just fill logic code
+                           Use twig with the logic code above, no code description, keep html tags intact 
+                           {items} 
                             """
 
         print("Processing, please wait a moment!")
+
         optimizer = TokenOptimizer()
         prompt = optimizer.optimize_prompt(prompt)
         if optimizer.count_tokens(prompt) > MAX_TOKEN:
@@ -235,7 +239,6 @@ class Embedding:
         matched_docs = results["documents"][0]
         matched_metas = results["metadatas"][0]
         matched_distances = results["distances"][0]
-        print(matched_metas)
         selected_doc = None
         for i, doc in enumerate(matched_docs):
             relevant_section = self.extract_relevant_section(doc, question)

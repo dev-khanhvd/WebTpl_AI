@@ -51,8 +51,8 @@ class TokenOptimizer:
         Gọi API với prompt tối ưu
         """
         # Kiểm tra và cắt token nếu cần
-        if self.count_tokens(prompt) > 4000:
-            prompt = self.truncate_text(prompt, 4000)
+        if self.count_tokens(prompt) > max_tokens:
+            prompt = self.truncate_text(prompt, max_tokens)
 
         return prompt
         # try:
@@ -68,36 +68,3 @@ class TokenOptimizer:
         # except Exception as e:
         #     print(f"Lỗi khi gọi API: {e}")
         #     return None
-
-
-# Ví dụ sử dụng
-def main():
-    # Khởi tạo optimizer
-    optimizer = TokenOptimizer()
-
-    # Ví dụ văn bản dài
-    long_text = """
-    Đây là một ví dụ về văn bản dài mà chúng ta muốn xử lý 
-    và tối ưu hóa số lượng token khi gửi đến OpenAI API. 
-    Chúng ta sẽ sử dụng các kỹ thuật như chia nhỏ văn bản, 
-    đếm token, và cắt giảm nếu cần thiết.
-    """
-
-    # Đếm token
-    print("Số lượng token:", optimizer.count_tokens(long_text))
-
-    # Chia văn bản thành chunks
-    chunks = optimizer.chunk_text(long_text, max_tokens_per_chunk=50)
-    print("Các chunk:", chunks)
-
-    # Tối ưu prompt
-    optimized_prompt = optimizer.optimize_prompt(long_text)
-    print("Prompt tối ưu:", optimized_prompt)
-
-    # Gọi API với prompt tối ưu
-    response = optimizer.get_completion(optimized_prompt)
-    print("Phản hồi:", response)
-
-
-if __name__ == "__main__":
-    main()
