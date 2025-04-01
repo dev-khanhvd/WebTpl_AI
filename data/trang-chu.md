@@ -155,8 +155,11 @@ Những sản phẩm được tích sản phẩm hot sẽ hiển thị tại đ�
 <figure><img src="../.gitbook/assets/image (26).png" alt=""><figcaption><p>Sản phẩm hot</p></figcaption></figure>
 
 
-### Sản phẩm trang chủ
+### Sản phẩm tick trang chủ 
 
+Người dùng có thể lựa chọn các sản phẩm muốn hiện ở trang chủ theo dạng tick trang chủ để hiển thị ra sản phẩm 
+
+Dưới đây là cách thức lấy sản phẩm được tick trang chủ của website:
 ```
 {% raw %}
 {% set homeProduct = searchProducts({'limit':8,'showHome':1}) %}
@@ -225,38 +228,8 @@ Những sản phẩm được nhập giá mới và giá cũ sẽ hiển thị t
 
 <figure><img src="../.gitbook/assets/image (44).png" alt=""><figcaption></figcaption></figure>
 
-Ví dụ một block hoàn chỉnh lấy sản phẩm:
 
-```
-{% raw %}
-{% set newProduct = searchProducts({'limit':8,'showNew':1}) %}
-{% if newProduct is not empty %}
-      {% for nw in newProduct %}
-         {{ nw.thumbnailUri }}
-         {{ nw.viewLink }}
-         {{ nw.name}}
-         
-         {% if(nw.calcDiscountPercent > 0) %}
-                {{ nw.calcDiscountPercent }}%
-         {% endif %}   
-         {% if(nw.contactPrice or (nw.price == 0)) %}   
-               Liên hệ
-         {% elseif nw.priceAfterDiscount > 0 %}
-              {{ nw.priceAfterDiscount | number_format(0) }}₫
-              {{ nw.price | number_format(0) }}₫
-         {% elseif (nw.oldPrice > 0) %}
-                {{ nw.price | number_format(0) }}₫
-                {{ nw.oldPrice | number_format(0) }}₫
-         {% else %}
-                 {{ nw.price | number_format(0) }}₫
-         {% endif %}
-      {% endfor %}
-    {% endif %}
-{% endraw %}
-```
-
-
-### Sản phẩm theo chương trình khuyến mãi
+### Chương trình khuyến mãi
 
 Là nơi để thể hiện danh sách sản phẩm theo chương trình khuyến mãi và có đếm ngược theo ID của chương trình khuyến mãi đang chạy
 
@@ -273,7 +246,16 @@ Dưới đây là cách thức lấy chương trình khuyến mãi và sản ph�
         {{ promotionObj.bannerUri }}
         {{ promotionObj.startDate }}
         {{ promotionObj.endDate }}
-        {% set promotionProduct = getPromotionProduct({'id':promotion.id,'limit':12}) %}
+    {% endif %}
+{% endif %}
+{% endraw %}
+```
+### Sản phẩm trong chương trình khuyến mãi
+Sau khi lấy được chương trình khuyến mãi, thì dưới đây là cách lấy ra sản phẩm trong chương trình khuyến mãi đó
+
+```
+{% raw %}
+{% set promotionProduct = getPromotionProduct({'id':promotion.id,'limit':12}) %}
         {% if(promotionProduct is not empty) %}
             {% for p in promotionProduct %}
                  {{ p.thumbnailUri }}
@@ -295,10 +277,9 @@ Dưới đây là cách thức lấy chương trình khuyến mãi và sản ph�
                  {% endif %}
               {% endfor %}        
         {% endif %}
-    {% endif %}
-{% endif %}
-{% endraw %}
-```
+{% end raw %}
+``` 
+
 ### Tạo nút yêu thích cho sản phẩm
 
 ```

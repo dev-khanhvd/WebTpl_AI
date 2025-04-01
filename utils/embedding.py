@@ -227,7 +227,7 @@ class Embedding:
         # Perform semantic search
         results = self.collection.query(
             query_texts=[question],
-            n_results=3,
+            n_results=5,
             include=["documents", "metadatas", "distances"]
         )
         # Validate search results
@@ -267,7 +267,7 @@ class Embedding:
                 "type": metadata.get("type", "")
             }
         }
-
+        print(answer_data)
         # Parse additional optional fields with robust error handling
         try:
             # Parse logic if available

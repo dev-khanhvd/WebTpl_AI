@@ -38,7 +38,7 @@ class HomePage:
                 'Sản phẩm mới',
                 'Sản phẩm hot',
                 'Sản phẩm trang chủ',
-                # 'Sản phẩm theo CTKM',
+                'Sản phẩm theo CTKM',
                 'Danh sách bài viết tin tức',
                 'Danh sách bài viết album',
             ]
@@ -64,7 +64,7 @@ class HomePage:
                 if len(wrapper_classes) > 0:
                     self.get_home_page_content2(wrapper_classes, menu_choice)
                 else:
-                    print('Nhập đủ id(class) wrapper và items')
+                    print('Nhập đủ ID(class) wrapper')
                     continue
 
 
@@ -87,18 +87,18 @@ class HomePage:
                         question = "Sản phẩm tick mới"
                         self.detect_block_fill_code(template_content, wrapper_classes, question)
                     case 3:
-                        question = "Sản phẩm tick hot"
+                        question = "Sản phẩm hot"
                         self.detect_block_fill_code(template_content, wrapper_classes, question)
                     case 4:
-                        question = "Sản phẩm tick trang chủ"
+                        question = "Sản phẩm được tick trang chủ"
                         self.detect_block_fill_code(template_content, wrapper_classes, question)
-                    # case 5:
-                    #     question = "Sản phẩm chương trình promotion"
-                    #     self.detect_block_fill_code(template_content, wrapper_classes, question)
                     case 5:
-                        question = 'Danh sách Tin tức'
+                        question = "Sản phẩm chương trình promotion"
                         self.detect_block_fill_code(template_content, wrapper_classes, question)
                     case 6:
+                        question = 'Danh sách Tin tức'
+                        self.detect_block_fill_code(template_content, wrapper_classes, question)
+                    case 7:
                         question = 'Danh sách bộ sưu tập'
                         self.detect_block_fill_code(template_content, wrapper_classes, question)
                     case _:
