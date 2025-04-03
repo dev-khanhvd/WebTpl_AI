@@ -60,12 +60,23 @@ class HomePage:
                 f"Nhập ID(class) wrapper cho '{selected_option}' : ").strip()
 
             if class_input:
-                wrapper_classes = [cls.strip() for cls in class_input.split(',')]
-                if len(wrapper_classes) > 0:
-                    self.get_home_page_content2(wrapper_classes, menu_choice)
+                if menu_choice == 5:
+                    wrapper_classes = [cls.strip() for cls in class_input.split(',')]
+
+                    if len(wrapper_classes) > 1:
+                        main_wrapper = [wrapper_classes[0] if len(wrapper_classes) > 0 else ""]
+                        product_wrapper = [wrapper_classes[1] if len(wrapper_classes) > 1 else ""]
+                        self.get_home_page_content2(main_wrapper, menu_choice, product_wrapper)
+                    else:
+                        print('Nhập đủ ID và class wrapper')
+                        continue
                 else:
-                    print('Nhập đủ ID(class) wrapper')
-                    continue
+                    wrapper_classes = [cls.strip() for cls in class_input.split(',')]
+                    if len(wrapper_classes) > 0:
+                        self.get_home_page_content2(wrapper_classes, menu_choice)
+                    else:
+                        print('Nhập đủ ID(class) wrapper')
+                        continue
 
 
     def get_home_page_content(self):
@@ -75,7 +86,7 @@ class HomePage:
                 self.detect_banner_blocks(template_content)
                 # self.detect_product_list_home(template_content)
 
-    def get_home_page_content2(self, wrapper_classes, choice_selected):
+    def get_home_page_content2(self, wrapper_classes, choice_selected, item_classes = None):
         if self.base_dir:
             with open(self.file_path, 'r', encoding='utf-8') as file:
                 template_content = file.read()
@@ -93,8 +104,8 @@ class HomePage:
                         question = "Sản phẩm được tick trang chủ"
                         self.detect_block_fill_code(template_content, wrapper_classes, question)
                     case 5:
-                        question = "Sản phẩm chương trình promotion"
-                        self.detect_block_fill_code(template_content, wrapper_classes, question)
+                        question = 'Chương trình khuyến mãi?'
+                        self.detect_block_promotion(template_content, wrapper_classes, item_classes, question)
                     case 6:
                         question = 'Danh sách Tin tức'
                         self.detect_block_fill_code(template_content, wrapper_classes, question)
@@ -123,6 +134,16 @@ class HomePage:
         content_soup = self.detect_position_home3(wrapper_classes, template_content, question, 'home_products_list_block')
         if content_soup:
             self.update_content_home_page(content_soup)
+
+    def detect_block_promotion(self, template_content, main_wrapper, product_wrapper, question):
+        section_header = self.detect_position_home_promotion_section(main_wrapper, product_wrapper,template_content, question, 'home_promotion_details')
+        if section_header:
+            if section_header.get('list_product'):
+                question = "Sản phẩm trong chương trình khuyến mãi"
+                result_promotion = self.detect_position_home_promotion_products(product_wrapper, section_header.get('list_product'), section_header.get('htmp_soup'), question,
+                                                             'home_promotion_details')
+                if result_promotion:
+                    self.update_content_home_page(result_promotion)
 
     def detect_position_home(self, wrapper_pattern, soup, question = None, type = None):
         return self.detect_position_home3(wrapper_pattern, soup, question, type)
@@ -187,10 +208,12 @@ class HomePage:
         potential_parents = []
         for pattern in wrapper_pattern:
             # Try to find by ID first, then fall back to class
-            id_elements = soup.find_all(id=re.compile(pattern))
-            class_elements = soup.find_all(class_=re.compile(pattern))
-            potential_parents.extend(id_elements)
-            potential_parents.extend(class_elements)
+            elements = soup.find_all(id=re.compile(pattern))
+            if not elements:
+                elements = soup.find_all(class_=re.compile(pattern))
+
+            if elements:
+                potential_parents.extend(elements)
 
         parent_wrapper = None
         if potential_parents:
@@ -214,6 +237,139 @@ class HomePage:
 
                 return soup
 
+        return None
+
+    def detect_position_home_promotion_products2(self, main_wrapper, product_wrapper, soup, question=None, type=None):
+        if not isinstance(soup, BeautifulSoup):
+            soup = BeautifulSoup(soup, 'html.parser')
+
+        prd_wrapper = None
+        main_product_wrp = None
+        found_items = []
+        potential_parents = []
+        for pattern in main_wrapper:
+            elements = soup.find_all(id=re.compile(pattern))
+            if not elements:
+                elements = soup.find_all(class_=re.compile(pattern))
+
+            potential_parents.extend(elements)
+
+            for parent in potential_parents:
+                items = []
+                for keyword in product_wrapper:
+                    found = soup.find_all(id=re.compile(keyword))
+                    if not found:
+                        found = soup.find_all(class_=re.compile(keyword))
+                    if found:
+                        items.extend(found)
+                    if items:
+                        found_items = items[0].find_all("div", recursive=False)
+                        main_product_wrp = items[0].parent
+                        prd_wrapper = items[0]
+        if found_items:
+            prd_wrapper.clear()
+            prd_wrapper.append(found_items[0])
+            list_prd_promt = main_product_wrp.find()
+            main_product_wrp.clear()
+            if potential_parents:
+                promotion_section = str(potential_parents[0])
+                embedings = Embedding(self.base_dir)
+                result = embedings.process_question(question, type, promotion_section)
+                if result:
+                    product_question = "Sản phẩm trong chương trình khuyến mãi"
+                    rs_prd = embedings.process_question(product_question, type, list_prd_promt)
+                    if rs_prd:
+                        section_prd = BeautifulSoup(f"\n{rs_prd}\n", "html.parser")
+                        prd_wrapper.append(section_prd)
+                    return soup
+        return None
+
+    def detect_position_home_promotion_section(self, main_wrapper, product_wrapper, soup, question=None, type=None):
+        if not isinstance(soup, BeautifulSoup):
+            soup = BeautifulSoup(soup, 'html.parser')
+
+        prd_wrapper = None
+        main_product_wrp = None
+        found_items = []
+        potential_parents = []
+        section_wrp = None
+        # Tìm các phần tử tiềm năng theo main_wrapper pattern
+        for pattern in main_wrapper:
+            elements = soup.find_all(id=re.compile(pattern))
+            if not elements:
+                elements = soup.find_all(class_=re.compile(pattern))
+            potential_parents.extend(elements)
+        # Tìm các sản phẩm theo product_wrapper pattern
+        for parent in potential_parents:
+            items = []
+            for keyword in product_wrapper:
+                found = soup.find_all(id=re.compile(keyword))
+                if not found:
+                    found = soup.find_all(class_=re.compile(keyword))
+                if found:
+                    items.extend(found)
+
+                if items:
+                    found_items = items[0].find_all("div", recursive=False)
+                    main_product_wrp = items[0].parent
+                    prd_wrapper = items[0]
+                    break
+            if found_items:
+                break
+
+        # Xử lý khi tìm thấy các phần tử phù hợp
+        if found_items and prd_wrapper and main_product_wrp and potential_parents:
+            # tạo 1 biến chứa list sản phẩm để trả về 1 mảng cùng với soup
+            # mục đích: sau khi có data return thì bắt đầu call AI để fill code tiếp vào block này
+            list_prd_promt = found_items[0]
+            first_products = list_prd_promt.find_all("div", recursive=False)
+            prd_wrapper.clear()
+            list_prd_promt.clear()
+            list_prd_promt.append(first_products[0])
+
+            # Xử lý wrapper CTKM trước
+            parent_wrapper = potential_parents[0]
+            if parent_wrapper.contents:
+                for child in parent_wrapper.contents:
+                    if child and not isinstance(child, str) or (isinstance(child, str) and child.strip()):
+                        section_wrp = child
+                        break
+
+            promotion_section = potential_parents[0]
+            promotion_section.clear()
+            embedings = Embedding(self.base_dir)
+            result = embedings.process_question(question, type, section_wrp)
+
+            if result:
+                section_prm = BeautifulSoup(f"\n{result}\n", "html.parser")
+                promotion_section.append(section_prm)
+
+                list_items_promotion = {
+                    'htmp_soup' : soup,
+                    'list_product' : list_prd_promt,
+                }
+                return list_items_promotion
+
+        return None
+    def detect_position_home_promotion_products(self, main_wrapper,product_wrp, soup, question=None, type=None):
+        if not isinstance(soup, BeautifulSoup):
+            soup = BeautifulSoup(soup, 'html.parser')
+
+        potential_parents = []
+        for pattern in main_wrapper:
+            elements = soup.find_all(id=re.compile(pattern))
+            if not elements:
+                elements = soup.find_all(class_=re.compile(pattern))
+            potential_parents.extend(elements)
+
+        if potential_parents:
+            section_wrp = potential_parents[0]
+            embedings = Embedding(self.base_dir)
+            result = embedings.process_question(question, type, product_wrp)
+            if result:
+                section_prm = BeautifulSoup(f"\n{result}\n", "html.parser")
+                section_wrp.append(section_prm)
+            return soup
         return None
 
     def update_content_home_page(self, content):

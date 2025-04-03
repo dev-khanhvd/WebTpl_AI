@@ -25,6 +25,7 @@ class Embedding:
         self.types = [
             'home_banner_main_block',
             'home_products_list_block'
+            'home_promotion_details'
         ]
     def save_embeddings(self):
         """
@@ -49,7 +50,7 @@ class Embedding:
             sections = self.extract_sections(file_path)
 
             for section in sections:
-                print(section)
+                # print(section)
                 if not section['title'] or not section['description']:
                     continue
 
@@ -58,6 +59,7 @@ class Embedding:
                     'source': filename,
                     'title': section['title'],
                     'example': section['example'] or "",
+                    'guide': section['guide'] or "",
                     'type': 'section'
                 }
 
@@ -96,7 +98,7 @@ class Embedding:
             content = f.read()
 
         sections = []
-        current_section = {'title': None, 'example': None, 'description': []}
+        current_section = {'title': None, 'example': None, 'description': [], 'guide': []}
         in_raw_block = False
         example_content = []
 
@@ -104,14 +106,24 @@ class Embedding:
             # Process section titles
             if line.startswith('### '):
                 # Save previous section if it has content
-                if current_section['title'] or current_section['description'] or current_section['example']:
+                if current_section['title'] or current_section['description'] or current_section['example'] or \
+                        current_section['guide']:
                     sections.append(current_section)
 
                 current_section = {
                     'title': line[4:].strip(),
                     'example': None,
-                    'description': []
+                    'description': [],
+                    'guide': []
                 }
+                continue
+
+            if line.strip().startswith('* '):
+                current_section['guide'].append(line.strip())
+                continue
+            elif line.strip().startswith('  * ') or line.strip().startswith('    * '):
+                # This handles nested bullet points with different indentation levels
+                current_section['guide'].append(line.strip())
                 continue
 
             if '{% raw %}' in line or in_raw_block:
@@ -136,7 +148,8 @@ class Embedding:
                 current_section['description'].append(line.strip())
 
         # Add the last section
-        if current_section['title'] or current_section['description'] or current_section['example']:
+        if current_section['title'] or current_section['description'] or current_section['example'] or current_section[
+            'guide']:
             sections.append(current_section)
 
         # Clean description and convert to string
@@ -145,6 +158,11 @@ class Embedding:
             # Remove empty lines in example
             if section['example']:
                 section['example'] = re.sub(r'\n\s*\n', '\n', section['example'])
+
+            if section['guide']:
+                section['guide'] = '\n'.join(section['guide'])
+            else:
+                section['guide'] = ""  # Make sure it's an empty string instead of an empty list
 
         return sections
 
@@ -186,16 +204,25 @@ class Embedding:
             text = 'banner'
         elif type == "home_products_list_block":
             text = 'products'
+        elif type == "home_promotion_details":
+            text = 'promotion'
 
         if not best_match:
             return "🚫 No matching logic found."
 
+        # if text == 'promotion':
+        #     prompt = f"""Dựa trên thông tin sau, hãy tạo mã Twig để hiển thị {text}:
+        #                   - Ví dụ: {best_match['example']}
+        #                   - {best_match['guide']}
+        #                   - Sử dụng twig với ví dụ ở trên, không có mô tả mã, không tạo thêm mã html.
+        #                   {items}
+        #                                       """
+        # else:
         prompt = f"""Based on the following information, generate the Twig code to display {text}:
-                            - Example: {best_match['example']}
-                           Use twig with the logic code above, no code description, keep html tags intact 
-                           {items} 
-                            """
-
+                       - Example: {best_match['example']}
+                       - {best_match['guide']}
+                    Use twig with the logic code above, no code description, keep html tags intact, not add more html tag 
+                   {items}"""
         print("Processing, please wait a moment!")
 
         optimizer = TokenOptimizer()
@@ -203,6 +230,7 @@ class Embedding:
         if optimizer.count_tokens(prompt) > MAX_TOKEN:
             prompt = optimizer.truncate_text(prompt, MAX_TOKEN)
 
+        # print(prompt)
         completion = client.chat.completions.create(
             model= MODEL_NAME,
             store=True,
@@ -267,7 +295,6 @@ class Embedding:
                 "type": metadata.get("type", "")
             }
         }
-        print(answer_data)
         # Parse additional optional fields with robust error handling
         try:
             # Parse logic if available
@@ -276,16 +303,15 @@ class Embedding:
             answer_data["logic"] = []
         # Add example if available
         answer_data["example"] = metadata.get("example", "")
+        answer_data["guide"] = metadata.get("guide", "")
 
         # Modify add_training_data to handle simple data types
         # if answer_data:
-            # Extract only simple data types for training
-            # training_data = {
-            #     "question": answer_data["question"],
-            #     "answer": answer_data["answer"],
-            #     "source": answer_data["metadata"].get("source", "Unknown")
-            # }
-            # print(training_data)
+        #     training_data = {
+        #         "question": answer_data["question"],
+        #         "answer": answer_data["answer"],
+        #         "source": answer_data["metadata"].get("source", "Unknown")
+        #     }
         #     self.add_training_data(question, training_data)
 
         return answer_data
@@ -313,19 +339,17 @@ class Embedding:
         if len(sections) < 2:
             return document  # Nếu không chia được, trả về toàn bộ
 
-        # Lấy phần nội dung từ tiêu đề tìm được đến tiêu đề tiếp theo
+
         relevant_section = sections[1].split("### ")[0]  # Lấy phần trước tiêu đề tiếp theo
         return f"{best_header}\n{relevant_section}"
 
     def add_training_data(self, document, metadata=None):
-        # Prepare metadata for training
         if metadata is None:
             metadata = {}
 
         if "answer" not in metadata:
             metadata["answer"] = document
 
-        # Generate embedding for the question
         embedding = self.model.encode([document]).tolist()[0]
 
         # Add to collection

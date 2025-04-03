@@ -40,6 +40,11 @@ trí bắt mắt của một website, giúp thu hút lượng người truy cậ
 
 Dưới đây là cách thức lấy banner trang chủ của website:
 
+* Cách làm:
+  * B1. Lấy danh sách banner bằng getBannerByPositionCode()
+  * B2. Kiểm tra có dữ liệu không (if banner_home is not empty)
+  * B3. Lặp qua danh sách banner và hiển thị từng banner
+  
 ```
 {% raw %}
 {% set banner_home = getBannerByPositionCode('BANNER_HOME') %}
@@ -230,10 +235,16 @@ Những sản phẩm được nhập giá mới và giá cũ sẽ hiển thị t
 
 
 ### Chương trình khuyến mãi
-
 Là nơi để thể hiện danh sách sản phẩm theo chương trình khuyến mãi và có đếm ngược theo ID của chương trình khuyến mãi đang chạy
-
 Dưới đây là cách thức lấy chương trình khuyến mãi và sản phẩm theo chương trình khuyến mãi đó:
+
+* Cách làm:
+  * B1. Lấy ID của chương trình khuyến mãi
+  * B2. Nếu tồn tại, lấy dữ liệu khuyến mãi từ getPromotions()
+  * B3. Hiển thị tiêu đề "Flash Deals"
+  * B4. Thêm bộ đếm ngược dựa trên promotionObj.endDate
+  * B5. Cung cấp nút "Xem tất cả" để link promotionObj.viewLink
+  
 ```
 {% raw %}
 {% set promotionId = getKeyContentValue('PROMOTION_ID') | e('html') %}
@@ -255,37 +266,40 @@ Sau khi lấy được chương trình khuyến mãi, thì dưới đây là cá
 
 ```
 {% raw %}
-{% set promotionProduct = getPromotionProduct({'id':promotion.id,'limit':12}) %}
-        {% if(promotionProduct is not empty) %}
-            {% for p in promotionProduct %}
-                 {{ p.thumbnailUri }}
-                 {{ p.viewLink }}
-                 {{ p.name}}
-                 {% if(p.calcDiscountPercent > 0) %}
-                        {{ p.calcDiscountPercent }}%
-                 {% endif %}   
-                 {% if(p.contactPrice or (p.price == 0)) %}   
-                       Liên hệ
-                 {% elseif p.priceAfterDiscount > 0 %}
-                      {{ p.priceAfterDiscount | number_format(0) }}₫
-                      {{ p.price | number_format(0) }}₫
-                 {% elseif (p.oldPrice > 0) %}
-                        {{ p.price | number_format(0) }}₫
-                        {{ p.oldPrice | number_format(0) }}₫
-                 {% else %}
-                         {{ p.price | number_format(0) }}₫
-                 {% endif %}
-              {% endfor %}        
-        {% endif %}
-{% end raw %}
+{% set promotionProduct = getPromotionProduct({'id':promotionObj.id,'limit':12}) %}
+{% if(promotionProduct is not empty) %}
+   {% for p in promotionProduct %}
+     {{ p.id }}
+     {{ p.thumbnailUri }}
+     {{ p.viewLink }}
+     {{ p.name }}
+     {% if(p.calcDiscountPercent > 0) %}
+          {{ p.calcDiscountPercent }}%
+     {% endif %}   
+     {% if(p.contactPrice or (p.price == 0)) %}   
+          Liên hệ
+     {% elseif p.priceAfterDiscount > 0 %}
+          {{ p.priceAfterDiscount | number_format(0) }}₫
+          {{ p.price | number_format(0) }}₫
+      {% elseif (p.oldPrice > 0) %}
+          {{ p.price | number_format(0) }}₫
+          {{ p.oldPrice | number_format(0) }}₫
+      {% else %}
+           {{ p.price | number_format(0) }}₫
+     {% endif %}
+  {% endfor %}        
+% endif %}
+{% endraw %}
 ``` 
 
 ### Tạo nút yêu thích cho sản phẩm
 
 ```
+{% raw %}
 <div class="_addWishList" data-id="{{ productId }}">
     <i class="fa-thin fa-heart"></i>
 </div>
+{% endraw %}
 ```
 
 <figure><img src="../.gitbook/assets/image (28).png" alt=""><figcaption><p>Nút yêu thích và thuộc tính màu sắc của sản phẩm</p></figcaption></figure>
