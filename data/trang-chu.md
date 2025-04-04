@@ -90,11 +90,22 @@ Dưới đây là cách thức lấy danh mục sản phẩm của website:
 <figure><img src="../.gitbook/assets/image (24).png" alt=""><figcaption><p>Ảnh đại diện danh mục sản phẩm</p></figcaption></figure>
 
 ### Sản phẩm mới
+
+Những sản phẩm được tích sản phẩm mới sẽ hiển thị tại đây
+
+* Cách làm:
+  * B1. Lấy tối đa sản phẩm mới theo param limit từ searchProducts().
+  * B2. Kiểm tra có dữ liệu không (if newProduct is not empty)
+  * B3. Vòng lặp hiển thị sản phẩm: ảnh, tên, giá, đánh giá, nút hành động
+  * B4. Nếu có giảm giá, hiển thị phần trăm giảm giá
+  * B5. Nút hành động: thêm vào giỏ, yêu thích, xem nhanh (Thêm thuộc tính data-id="{{ np.id }}")
+  * B6. Hiển thị giá theo điều kiện (liên hệ, giảm giá, giá gốc)
 ```
 {% raw %}
 {% set newProduct = searchProducts({'limit':8,'showNew':1}) %}
 {% if newProduct is not empty %}
       {% for np in newProduct %}
+         {{ np.id }}
          {{ np.thumbnailUri }}
          {{ np.viewLink }}
          {{ np.name}}
@@ -118,13 +129,21 @@ Dưới đây là cách thức lấy danh mục sản phẩm của website:
 {% endraw %}
 ```
 
-Những sản phẩm được tích sản phẩm mới sẽ hiển thị tại đây
-
 <figure><img src="../.gitbook/assets/image (47).png" alt=""><figcaption></figcaption></figure>
 
 <figure><img src="../.gitbook/assets/image (25).png" alt=""><figcaption><p>Sản phẩm mới</p></figcaption></figure>
 
 ### Sản phẩm hot
+
+Những sản phẩm được tích sản phẩm hot sẽ hiển thị tại đây
+
+* Cách làm:
+  * B1. Lấy tối đa sản phẩm hot theo param limit từ searchProducts().
+  * B2. Kiểm tra có dữ liệu không (if hotProduct is not empty)
+  * B3. Vòng lặp hiển thị sản phẩm: ảnh, tên, giá, đánh giá, nút hành động
+  * B4. Nếu có giảm giá, hiển thị phần trăm giảm giá
+  * B5. Nút hành động: thêm vào giỏ, yêu thích, xem nhanh (Thêm thuộc tính data-id="{{ np.id }}")
+  * B6. Hiển thị giá theo điều kiện (liên hệ, giảm giá, giá gốc)
 ```
 {% raw %}
 {% set hotProduct = searchProducts({'limit':8,'showHot':1}) %}
@@ -153,8 +172,6 @@ Những sản phẩm được tích sản phẩm mới sẽ hiển thị tại �
 {% endraw %}
 ```
 
-Những sản phẩm được tích sản phẩm hot sẽ hiển thị tại đây
-
 <figure><img src="../.gitbook/assets/image (46).png" alt=""><figcaption></figcaption></figure>
 
 <figure><img src="../.gitbook/assets/image (26).png" alt=""><figcaption><p>Sản phẩm hot</p></figcaption></figure>
@@ -165,6 +182,15 @@ Những sản phẩm được tích sản phẩm hot sẽ hiển thị tại đ�
 Người dùng có thể lựa chọn các sản phẩm muốn hiện ở trang chủ theo dạng tick trang chủ để hiển thị ra sản phẩm 
 
 Dưới đây là cách thức lấy sản phẩm được tick trang chủ của website:
+
+* Cách làm:
+  * B1. Lấy tối đa sản phẩm tick trang chủ theo param limit từ searchProducts().
+  * B2. Kiểm tra có dữ liệu không (if homeProduct is not empty)
+  * B3. Vòng lặp hiển thị sản phẩm: ảnh, tên, giá, đánh giá, nút hành động
+  * B4. Nếu có giảm giá, hiển thị phần trăm giảm giá
+  * B5. Nút hành động: thêm vào giỏ, yêu thích, xem nhanh (Thêm thuộc tính data-id="{{ np.id }}")
+  * B6. Hiển thị giá theo điều kiện (liên hệ, giảm giá, giá gốc)
+
 ```
 {% raw %}
 {% set homeProduct = searchProducts({'limit':8,'showHome':1}) %}
@@ -201,6 +227,16 @@ Những sản phẩm được tích trang chủ sẽ hiển thị tại đây
 
 ### Sản phẩm giảm giá
 
+Những sản phẩm được nhập giá mới và giá cũ sẽ hiển thị tại đây
+
+* Cách làm:
+  * B1. Lấy tối đa sản phẩm giảm giá theo param limit từ searchProducts().
+  * B2. Kiểm tra có dữ liệu không (if discountProduct is not empty)
+  * B3. Vòng lặp hiển thị sản phẩm: ảnh, tên, giá, đánh giá, nút hành động
+  * B4. Nếu có giảm giá, hiển thị phần trăm giảm giá
+  * B5. Nút hành động: thêm vào giỏ, yêu thích, xem nhanh (Thêm thuộc tính data-id="{{ np.id }}")
+  * B6. Hiển thị giá theo điều kiện (liên hệ, giảm giá, giá gốc)
+
 ```
 {% raw %}
 {% set discountProduct = searchProducts({'limit':8,'discount':1}) %}
@@ -228,9 +264,6 @@ Những sản phẩm được tích trang chủ sẽ hiển thị tại đây
     {% endif %}
 {% endraw %}
 ```
-
-Những sản phẩm được nhập giá mới và giá cũ sẽ hiển thị tại đây
-
 <figure><img src="../.gitbook/assets/image (44).png" alt=""><figcaption></figcaption></figure>
 
 
@@ -241,7 +274,7 @@ Dưới đây là cách thức lấy chương trình khuyến mãi và sản ph�
 * Cách làm:
   * B1. Lấy ID của chương trình khuyến mãi
   * B2. Nếu tồn tại, lấy dữ liệu khuyến mãi từ getPromotions()
-  * B3. Hiển thị tiêu đề "Flash Deals"
+  * B3. Hiển thị tiêu đề theo tên chương trình khuyến mãi
   * B4. Thêm bộ đếm ngược dựa trên promotionObj.endDate
   * B5. Cung cấp nút "Xem tất cả" để link promotionObj.viewLink
   
@@ -263,6 +296,13 @@ Dưới đây là cách thức lấy chương trình khuyến mãi và sản ph�
 ```
 ### Sản phẩm trong chương trình khuyến mãi
 Sau khi lấy được chương trình khuyến mãi, thì dưới đây là cách lấy ra sản phẩm trong chương trình khuyến mãi đó
+* Cách làm:
+  * B1. Lấy tối đa sản phẩm trong chương trình khuyến mãi theo param limit từ getPromotionProduct().
+  * B2. Kiểm tra có dữ liệu không (if promotionProduct is not empty)
+  * B3. Vòng lặp hiển thị sản phẩm: ảnh, tên, giá, đánh giá, nút hành động
+  * B4. Nếu có giảm giá, hiển thị phần trăm giảm giá
+  * B5. Nút hành động: thêm vào giỏ, yêu thích, xem nhanh (Thêm thuộc tính data-id="{{ np.id }}")
+  * B6. Hiển thị giá theo điều kiện (liên hệ, giảm giá, giá gốc)
 
 ```
 {% raw %}
@@ -310,6 +350,10 @@ Là nơi để chuyển hướng nhanh đến bộ sưu tập sản phẩm mà n
 
 Dưới đây là cách thức lấy banner bộ sưu tập của website:
  
+* Cách làm:
+  * B1. Lấy tối đa album theo param limit từ searchAlbum().
+  * B2. Kiểm tra có dữ liệu không (if album is not empty)
+  * B3. Vòng lặp hiển thị album: ảnh, tên, link, mô tả
 ```
 {% raw %}
 {% set albumHome = searchAlbum({'limit': 5}) %}
@@ -351,6 +395,10 @@ Luôn cập nhật những tin tức mới nhất lên trang web của bạn
 
 Dưới đây là cách thức lấy tin tức của website:
 
+* Cách làm:
+  * B1. Lấy tối đa bài viết tin tức theo param limit từ getLastestNews().
+  * B2. Kiểm tra có dữ liệu không (if lastestNews is not empty)
+  * B3. Vòng lặp hiển thị tin tức bao gồm: ảnh, tên, link, title, giới thiệu, ngày tạo
 ```
 {% raw %}
 {% set lastestNews= getLastestNews({'limit':5}) %}

@@ -317,7 +317,6 @@ class HomePage:
             if found_items:
                 break
 
-        # Xử lý khi tìm thấy các phần tử phù hợp
         if found_items and prd_wrapper and main_product_wrp and potential_parents:
             # tạo 1 biến chứa list sản phẩm để trả về 1 mảng cùng với soup
             # mục đích: sau khi có data return thì bắt đầu call AI để fill code tiếp vào block này

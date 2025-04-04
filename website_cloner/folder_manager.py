@@ -79,16 +79,7 @@ class FolderManager:
 
         return flag_content
 
-    # def save_content_to_file(self, content, file_path, content_type=None):
-    #     """Save extracted content to the appropriate file"""
-    #     # Create parent directories if needed
-    #     os.makedirs(os.path.dirname(file_path), exist_ok=True)
-    #
-    #     with open(file_path, "w", encoding="utf-8") as f:
-    #         f.write(content)
-    #
-    #     print(f"Đã lưu nội dung vào: {file_path}")
-    #     return True
+
     def create_css_files(self ,output_folder, content):
         save_path = output_folder + '\\css\\'
         os.makedirs(save_path, exist_ok=True)
@@ -104,7 +95,6 @@ class FolderManager:
             else:
                 css_url = urljoin(base_url, css_link)
             css_name = os.path.basename(urlparse(css_url).path)
-            # css_name = css_name.replace("scss.css", "css")
 
             try:
                 response = requests.get(css_url)
