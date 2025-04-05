@@ -26,6 +26,7 @@ class Embedding:
             'home_banner_main_block',
             'home_products_list_block'
             'home_promotion_details'
+            'home_product_category'
         ]
     def save_embeddings(self):
         """
@@ -203,26 +204,22 @@ class Embedding:
         if type == "home_banner_main_block":
             text = 'banner'
         elif type == "home_products_list_block":
-            text = 'products'
+            text = 'sản phẩm'
+        elif type == "home_product_category":
+            text = 'danh mục sản phẩm'
         elif type == "home_promotion_details":
-            text = 'promotion'
+            text = 'chương trình khuyến mãi'
+
 
         if not best_match:
             return "🚫 No matching logic found."
 
-        # if text == 'promotion':
-        #     prompt = f"""Dựa trên thông tin sau, hãy tạo mã Twig để hiển thị {text}:
-        #                   - Ví dụ: {best_match['example']}
-        #                   - {best_match['guide']}
-        #                   - Sử dụng twig với ví dụ ở trên, không có mô tả mã, không tạo thêm mã html.
-        #                   {items}
-        #                                       """
-        # else:
-        prompt = f"""Based on the following information, generate the Twig code to display {text}:
-                       - Example: {best_match['example']}
-                       - {best_match['guide']}
-                    Use twig with the logic code above, no code description, keep html tags intact, not add more html tag 
-                   {items}"""
+        prompt = f"""Dựa trên thông tin sau, hãy tạo mã Twig để hiển thị {text}:
+                       - Ví dụ: {best_match['example']}
+                       {best_match['guide']}
+                       {items}
+                        Sử dụng twig với mã logic ở trên, không thay đổi mã html 
+                    """
         print("Processing, please wait a moment!")
 
         optimizer = TokenOptimizer()
@@ -230,7 +227,8 @@ class Embedding:
         if optimizer.count_tokens(prompt) > MAX_TOKEN:
             prompt = optimizer.truncate_text(prompt, MAX_TOKEN)
 
-        # print(prompt)
+        print(prompt)
+
         completion = client.chat.completions.create(
             model= MODEL_NAME,
             store=True,

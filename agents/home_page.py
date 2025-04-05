@@ -41,6 +41,7 @@ class HomePage:
                 'Sản phẩm theo CTKM',
                 'Danh sách bài viết tin tức',
                 'Danh sách bài viết album',
+                'Danh mục sản phẩm',
             ]
 
             for i, option in enumerate(options, 1):
@@ -112,6 +113,9 @@ class HomePage:
                     case 7:
                         question = 'Danh sách bộ sưu tập'
                         self.detect_block_fill_code(template_content, wrapper_classes, question)
+                    case 8:
+                        question = 'Danh mục sản phẩm'
+                        self.detect_block_fill_code(template_content, wrapper_classes, question)
                     case _:
                         print("Lựa chọn không hợp lệ!")
 
@@ -131,7 +135,7 @@ class HomePage:
             self.update_content_home_page(content_soup)
 
     def detect_block_fill_code(self, template_content, wrapper_classes, question):
-        content_soup = self.detect_position_home3(wrapper_classes, template_content, question, 'home_products_list_block')
+        content_soup = self.detect_position_home3(wrapper_classes, template_content, question, 'home_product_category')
         if content_soup:
             self.update_content_home_page(content_soup)
 

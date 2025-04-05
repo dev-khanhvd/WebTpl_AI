@@ -82,6 +82,7 @@ Dưới đây là cách thức lấy danh mục sản phẩm của website:
         {{ c.viewLink }}
         {{ c.name }}
         {{ c.imageUri }}
+        {{ c.iconUri }}
     {% endfor %}
 {% endif%}
 {% endraw %}
@@ -344,6 +345,28 @@ Sau khi lấy được chương trình khuyến mãi, thì dưới đây là cá
 
 <figure><img src="../.gitbook/assets/image (28).png" alt=""><figcaption><p>Nút yêu thích và thuộc tính màu sắc của sản phẩm</p></figcaption></figure>
 
+### Danh sách thương hiệu
+Là nơi để hiển thị các thương hiệu mà doanh nghiệp bán
+Dưới đây là cách thức lấy danh sách thương hiệu:
+* Cách làm:
+  * B1. Lấy tối đa thương hiệu theo param limit từ loadListBrands().
+  * B2. Kiểm tra có dữ liệu không (if l_brand is not empty)
+  * B3. Vòng lặp hiển thị thương hiệu: ảnh, tên, link
+  * B4. Kiểm tra nếu thương hiệu có ảnh thì mới hiển thị (if b.imageUri is not empty)
+```
+{% raw %}
+ {% set l_brand = loadListBrands({'limit':10}) %}
+    {% if l_brand not empty) %}
+        {% for b in l_brand %}
+          {% if b.imageUri is not empty %}
+           {{ b.name }}
+           {{ b.viewLink }}
+           {{ b.imageUri }}   
+          {% endif %}
+        {% endfor %}
+    {% endif %}
+{% endraw %}
+```
 ### Danh sách bộ sưu tập
 
 Là nơi để chuyển hướng nhanh đến bộ sưu tập sản phẩm mà người dùng yêu thích
