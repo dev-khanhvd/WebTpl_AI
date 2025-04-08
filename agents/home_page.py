@@ -34,13 +34,15 @@ class HomePage:
         while True:
             print("\n=== Fill code logic cho trang chủ ===")
             options = [
-                'Banner chính',
+                'Banner không giới hạn số lượng',
+                'Banner giới hạn số lượng',
                 'Sản phẩm mới',
                 'Sản phẩm hot',
                 'Sản phẩm trang chủ',
                 'Sản phẩm theo CTKM',
                 'Danh sách bài viết tin tức',
                 'Danh sách bài viết album',
+                'Danh thương hiệu',
                 'Danh mục sản phẩm',
             ]
 
@@ -61,9 +63,8 @@ class HomePage:
                 f"Nhập ID(class) wrapper cho '{selected_option}' : ").strip()
 
             if class_input:
-                if menu_choice == 5:
+                if menu_choice == 6:
                     wrapper_classes = [cls.strip() for cls in class_input.split(',')]
-
                     if len(wrapper_classes) > 1:
                         main_wrapper = [wrapper_classes[0] if len(wrapper_classes) > 0 else ""]
                         product_wrapper = [wrapper_classes[1] if len(wrapper_classes) > 1 else ""]
@@ -74,7 +75,14 @@ class HomePage:
                 else:
                     wrapper_classes = [cls.strip() for cls in class_input.split(',')]
                     if len(wrapper_classes) > 0:
-                        self.get_home_page_content2(wrapper_classes, menu_choice)
+                        number_limit = input(
+                            f"Nhập số lượng lấy ra cho '{selected_option}' : ").strip()
+                        options = {}
+                        if number_limit.isdigit():
+                            options = {
+                                'limit': int(number_limit)
+                            }
+                        self.get_home_page_content2(wrapper_classes, menu_choice, None, options)
                     else:
                         print('Nhập đủ ID(class) wrapper')
                         continue
@@ -87,35 +95,41 @@ class HomePage:
                 self.detect_banner_blocks(template_content)
                 # self.detect_product_list_home(template_content)
 
-    def get_home_page_content2(self, wrapper_classes, choice_selected, item_classes = None):
+    def get_home_page_content2(self, wrapper_classes, choice_selected, item_classes = None, options = None):
         if self.base_dir:
             with open(self.file_path, 'r', encoding='utf-8') as file:
                 template_content = file.read()
                 match choice_selected:
                     case 1:
-                        question = "Banner trên trang chủ"
-                        self.detect_block_fill_code(template_content, wrapper_classes, question)
+                        question = "Banner slide trên trang chủ"
+                        self.detect_block_fill_code(template_content, wrapper_classes, question, 'banner_block')
                     case 2:
-                        question = "Sản phẩm tick mới"
-                        self.detect_block_fill_code(template_content, wrapper_classes, question)
+                        question = "Banner limit trên trang chủ"
+                        self.detect_block_fill_code(template_content, wrapper_classes, question, 'banner_block', options)
                     case 3:
-                        question = "Sản phẩm hot"
-                        self.detect_block_fill_code(template_content, wrapper_classes, question)
+                        question = "Sản phẩm tick mới"
+                        self.detect_block_fill_code(template_content, wrapper_classes, question,'home_products_list_block', options)
                     case 4:
-                        question = "Sản phẩm được tick trang chủ"
-                        self.detect_block_fill_code(template_content, wrapper_classes, question)
+                        question = "Sản phẩm hot"
+                        self.detect_block_fill_code(template_content, wrapper_classes, question,'home_products_list_block', options)
                     case 5:
+                        question = "Sản phẩm được tick trang chủ"
+                        self.detect_block_fill_code(template_content, wrapper_classes, question,'home_products_list_block', options)
+                    case 6:
                         question = 'Chương trình khuyến mãi?'
                         self.detect_block_promotion(template_content, wrapper_classes, item_classes, question)
-                    case 6:
-                        question = 'Danh sách Tin tức'
-                        self.detect_block_fill_code(template_content, wrapper_classes, question)
                     case 7:
-                        question = 'Danh sách bộ sưu tập'
-                        self.detect_block_fill_code(template_content, wrapper_classes, question)
+                        question = 'Bài viết tin tức'
+                        self.detect_block_fill_code(template_content, wrapper_classes, question, 'home_article_news', options)
                     case 8:
+                        question = 'Danh sách bộ sưu tập'
+                        self.detect_block_fill_code(template_content, wrapper_classes, question, 'home_album', options)
+                    case 9:
+                        question = 'Danh sách thương hiệu'
+                        self.detect_block_fill_code(template_content, wrapper_classes, question, 'home_brands', options)
+                    case 10:
                         question = 'Danh mục sản phẩm'
-                        self.detect_block_fill_code(template_content, wrapper_classes, question)
+                        self.detect_block_fill_code(template_content, wrapper_classes, question, 'home_product_category')
                     case _:
                         print("Lựa chọn không hợp lệ!")
 
@@ -134,8 +148,8 @@ class HomePage:
         if content_soup:
             self.update_content_home_page(content_soup)
 
-    def detect_block_fill_code(self, template_content, wrapper_classes, question):
-        content_soup = self.detect_position_home3(wrapper_classes, template_content, question, 'home_product_category')
+    def detect_block_fill_code(self, template_content, wrapper_classes, question, type=None, options = None):
+        content_soup = self.detect_position_home3(wrapper_classes, template_content, question,type, options)
         if content_soup:
             self.update_content_home_page(content_soup)
 
@@ -204,7 +218,8 @@ class HomePage:
                     return soup
             return None
 
-    def detect_position_home3(self, wrapper_pattern, soup, question=None, type=None):
+    def detect_position_home3(self, wrapper_pattern, soup, question=None, type=None, options = None):
+
         if not isinstance(soup, BeautifulSoup):
             soup = BeautifulSoup(soup, 'html.parser')
 
@@ -232,9 +247,8 @@ class HomePage:
                 item = parent_wrapper.find()
 
             parent_wrapper.clear()
-
             embedding = Embedding(self.base_dir)
-            result = embedding.process_question(question, type, item)
+            result = embedding.process_question(question, type, item, options)
             if result:
                 twig_soup = BeautifulSoup(f"\n{result}\n", "html.parser")
                 parent_wrapper.append(twig_soup)

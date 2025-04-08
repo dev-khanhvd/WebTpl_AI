@@ -61,34 +61,39 @@ Dưới đây là cách thức lấy banner trang chủ của website:
 {% endraw %}
 ```
 
+### Banner limit trên trang chủ
+
+Banner dạng này thì chỉ dùng cho 1 số chỗ để tối đa là bao nhiêu banner trên 1 block. 
+Dưới đây là cách thức lấy banner có giới hạn số lượng của website:_
+
+* Cách làm:
+  * B1. Gọi hàm getCurrentBannerByCode với tham số 'BANNER_HOME' và giới hạn theo người dùng đặt ra (limit)
+  * B2. Kiểm tra có dữ liệu không (if banner_home is not empty)
+  * B3. Vòng lặp qua các phần tử trong banner_home.
+  * B4. Fill code với các giá trị tương ứng
+  
+```
+{% raw %}
+{% set banner_home = getCurrentBannerByCode('BANNER_HOME', {'limit':2}) %}
+{% if(banner_home is not empty) %}
+     {% for c in banner_home %}
+        {{ c.viewLink }}
+        {{ c.imageSrc }}
+        {{ c.target }}
+        {{ c.name }}
+        {{ c.intro }}
+        {{ c.description }}
+    {% endfor %}
+{% endif %}
+{% endraw %}
+```
+
 Trong đó <mark style="color:red;">`BANNER_HOME`</mark> là mã vị trí của banner (có thể thay đổi tên tùy theo vị trí cũng
 như chức năng của từng banner) sẽ được tạo trong trang quản trị website.
 
 <figure><img src="../.gitbook/assets/image (42).png" alt=""><figcaption></figcaption></figure>
 
 <figure><img src="../.gitbook/assets/image (23).png" alt=""><figcaption><p>Banner trang chủ</p></figcaption></figure>
-
-### Danh mục sản phẩm
-
-Để người dùng có thể chuyển hướng đến các danh mục sản phẩm mình thích được nhanh chóng hơn.
-
-Dưới đây là cách thức lấy danh mục sản phẩm của website:
-
-```
-{% raw %}
-{% set category = getCategories() %}
-{% if category is not empty %}
-    {% for c in category %}
-        {{ c.viewLink }}
-        {{ c.name }}
-        {{ c.imageUri }}
-        {{ c.iconUri }}
-    {% endfor %}
-{% endif%}
-{% endraw %}
-```
-
-<figure><img src="../.gitbook/assets/image (24).png" alt=""><figcaption><p>Ảnh đại diện danh mục sản phẩm</p></figcaption></figure>
 
 ### Sản phẩm mới
 
@@ -345,9 +350,30 @@ Sau khi lấy được chương trình khuyến mãi, thì dưới đây là cá
 
 <figure><img src="../.gitbook/assets/image (28).png" alt=""><figcaption><p>Nút yêu thích và thuộc tính màu sắc của sản phẩm</p></figcaption></figure>
 
-### Danh sách thương hiệu
+### Danh mục sản phẩm
+
+Để người dùng có thể chuyển hướng đến các danh mục sản phẩm mình thích được nhanh chóng hơn.
+Dưới đây là cách thức lấy danh mục sản phẩm của website:
+
+```
+{% raw %}
+{% set category = getCategories() %}
+{% if category is not empty %}
+    {% for c in category %}
+        {{ c.viewLink }}
+        {{ c.name }}
+        {{ c.imageUri }}
+        {{ c.iconUri }}
+    {% endfor %}
+{% endif%}
+{% endraw %}
+```
+
+<figure><img src="../.gitbook/assets/image (24).png" alt=""><figcaption><p>Ảnh đại diện danh mục sản phẩm</p></figcaption></figure>
+
+### Thương hiệu
 Là nơi để hiển thị các thương hiệu mà doanh nghiệp bán
-Dưới đây là cách thức lấy danh sách thương hiệu:
+Dưới đây là cách thức lấy thương hiệu:
 * Cách làm:
   * B1. Lấy tối đa thương hiệu theo param limit từ loadListBrands().
   * B2. Kiểm tra có dữ liệu không (if l_brand is not empty)
@@ -367,7 +393,7 @@ Dưới đây là cách thức lấy danh sách thương hiệu:
     {% endif %}
 {% endraw %}
 ```
-### Danh sách bộ sưu tập
+### Bộ sưu tập
 
 Là nơi để chuyển hướng nhanh đến bộ sưu tập sản phẩm mà người dùng yêu thích
 
@@ -412,12 +438,10 @@ Chú ý: a.id => là id của albumHome được khai báo ở trên
 
 <figure><img src="../.gitbook/assets/image (29).png" alt=""><figcaption><p>Bộ sưu tập</p></figcaption></figure>
 
-### Bài viết tin tức
+### Danh sách bài viết tin tức
 
-Luôn cập nhật những tin tức mới nhất lên trang web của bạn
-
-Dưới đây là cách thức lấy tin tức của website:
-
+Lấy ra danh sách các bài viết tin tức để hiển thị trên website
+Dưới đây là cách thức lấy bài viết tin tức trên website:
 * Cách làm:
   * B1. Lấy tối đa bài viết tin tức theo param limit từ getLastestNews().
   * B2. Kiểm tra có dữ liệu không (if lastestNews is not empty)
@@ -438,3 +462,4 @@ Dưới đây là cách thức lấy tin tức của website:
 ```
 
 <figure><img src="../.gitbook/assets/image (30).png" alt=""><figcaption><p>Tin tức</p></figcaption></figure>
+

@@ -2,7 +2,6 @@ import json
 import uuid
 import re
 import os
-from sentence_transformers import SentenceTransformer
 from config import MODEL_NAME, MAX_TOKEN, OPENAI_API_KEY, TEMPERATURE
 from vector_db.chroma_db import ChromaDB
 from openai import OpenAI
@@ -11,10 +10,12 @@ from utils.token_optimizer import TokenOptimizer
 class Embedding:
     def __init__(self, base_dir):
         self.base_dir = base_dir
-        self.model = SentenceTransformer("all-MiniLM-L6-v2")
         self.data_json = "./data/data_training.json"
         self.data = "./data"
-
+        self.client = OpenAI(
+            api_key=OPENAI_API_KEY
+        )
+        self.model = 'text-embedding-3-small'
         # Create ChromaDB instance
         chroma_db = ChromaDB(self.base_dir)
 
@@ -71,9 +72,13 @@ class Embedding:
 
                 # Xử lý theo batch
                 if len(documents) >= batch_size:
-                    embeddings = self.model.encode(documents)
+                    response = self.client.embeddings.create(
+                        model=self.model,
+                        input=documents
+                    )
+                    embeddings = [item.embedding for item in response.data]
                     self.collection.add(
-                        embeddings=embeddings.tolist(),
+                        embeddings=embeddings,
                         metadatas=metadatas,
                         ids=ids,
                         documents=documents
@@ -84,9 +89,13 @@ class Embedding:
 
         # Process the final batch
         if len(documents) > 0:
-            embeddings = self.model.encode(documents)
+            response = self.client.embeddings.create(
+                model=self.model,
+                input=documents
+            )
+            embeddings = [item.embedding for item in response.data]
             self.collection.add(
-                embeddings=embeddings.tolist(),
+                embeddings=embeddings,
                 metadatas=metadatas,
                 ids=ids,
                 documents=documents
@@ -176,13 +185,13 @@ class Embedding:
         all_items = self.collection.get()
         return json.dumps(all_items, indent=2)
 
-    def process_question(self, user_question, type = None, items = None):
+    def process_question(self, user_question, type = None, items = None, options = None):
         print(f"🔍 Processing question: {user_question}")
         best_match = self.get_answer_with_details(user_question)
         pattern = r"```(?:twig)?\n([\s\S]*?)```"
         if best_match:
             print(f"✅ The best answer has been found: {best_match['question']}")
-            generated_code = self.generate_code_with_llama(best_match,type ,items)
+            generated_code = self.generate_code_with_llama(best_match,type ,items, options)
             content = re.search(pattern, generated_code[type])
             if content:
                 return content.group(1)
@@ -195,31 +204,35 @@ class Embedding:
                 "message": "No matching logic found."
             }
 
-    def generate_code_with_llama(self, best_match = None, type = None, items = None):
+    def generate_code_with_llama(self, best_match = None, type = None, items = None, options = None):
 
-        client = OpenAI(
-            api_key= OPENAI_API_KEY
-        )
-        text = ''
-        if type == "home_banner_main_block":
-            text = 'banner'
-        elif type == "home_products_list_block":
-            text = 'sản phẩm'
-        elif type == "home_product_category":
-            text = 'danh mục sản phẩm'
-        elif type == "home_promotion_details":
-            text = 'chương trình khuyến mãi'
+        if options is None:
+            options = {}
 
+        type_map = {
+            "banner_block": "banner",
+            "home_products_list_block": "sản phẩm",
+            "home_product_category": "danh mục sản phẩm",
+            "home_promotion_details": "chương trình khuyến mãi",
+            "home_article_news": "bài viết tin tức",
+            "home_brands": "thương hiệu",
+            "home_album": "album"
+        }
+        text = type_map.get(type, "nội dung")
+
+        text_limit = ""
+        if "limit" in options:
+            text_limit = f"với số lượng {options['limit']} {text}"
 
         if not best_match:
             return "🚫 No matching logic found."
 
-        prompt = f"""Dựa trên thông tin sau, hãy tạo mã Twig để hiển thị {text}:
-                       - Ví dụ: {best_match['example']}
-                       {best_match['guide']}
-                       {items}
-                        Sử dụng twig với mã logic ở trên, không thay đổi mã html 
-                    """
+        prompt = f"""Dựa trên thông tin sau, hãy tạo mã Twig để hiển thị {text} {text_limit}:
+                               - Ví dụ: {best_match['example']}
+                               {best_match['guide']}
+                               {items}
+                                Sử dụng twig với mã logic ở trên, không thay đổi mã html 
+                          """
         print("Processing, please wait a moment!")
 
         optimizer = TokenOptimizer()
@@ -229,30 +242,34 @@ class Embedding:
 
         print(prompt)
 
-        completion = client.chat.completions.create(
-            model= MODEL_NAME,
-            store=True,
-            max_tokens=MAX_TOKEN,
-            temperature=TEMPERATURE,
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"""{prompt}"""
-                }
-            ]
-        )
-        if completion:
-            object_completion_message = completion.choices[0].message
-            return {type: object_completion_message.content}
+        # completion = client.chat.completions.create(
+        #     model= MODEL_NAME,
+        #     store=True,
+        #     max_tokens=MAX_TOKEN,
+        #     temperature=TEMPERATURE,
+        #     messages=[
+        #         {
+        #             "role": "user",
+        #             "content": f"""{prompt}"""
+        #         }
+        #     ]
+        # )
+        # if completion:
+        #     object_completion_message = completion.choices[0].message
+        #     return {type: object_completion_message.content}
 
     def get_answer_with_details(self, question):
         # Check if collection is empty
         if self.collection.count() == 0:
             return None
 
+        response = self.client.embeddings.create(
+            model= self.model,
+            input=question
+        )
         # Perform semantic search
         results = self.collection.query(
-            query_texts=[question],
+            query_embeddings=[response.data[0].embedding],
             n_results=5,
             include=["documents", "metadatas", "distances"]
         )
@@ -266,6 +283,8 @@ class Embedding:
         matched_metas = results["metadatas"][0]
         matched_distances = results["distances"][0]
         selected_doc = None
+
+        print(matched_docs)
         for i, doc in enumerate(matched_docs):
             relevant_section = self.extract_relevant_section(doc, question)
             if relevant_section:
@@ -348,12 +367,17 @@ class Embedding:
         if "answer" not in metadata:
             metadata["answer"] = document
 
-        embedding = self.model.encode([document]).tolist()[0]
+        response  = self.client.embeddings.create(
+            model=self.model,
+            input=document
+        )
+        embedding = response.data[0].embedding
+        doc_id = f"doc_{abs(hash(document))}"
 
         # Add to collection
         self.collection.add(
             embeddings=[embedding],
             documents=[document],
             metadatas=[metadata],
-            ids=[f"doc_{hash(document)}"]
+            ids=[doc_id]
         )
