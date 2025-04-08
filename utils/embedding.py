@@ -282,7 +282,6 @@ class Embedding:
         matched_distances = results["distances"][0]
         selected_doc = None
 
-        print(matched_docs)
         for i, doc in enumerate(matched_docs):
             relevant_section = self.extract_relevant_section(doc, question)
             if relevant_section:
