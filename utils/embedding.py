@@ -240,23 +240,21 @@ class Embedding:
         if optimizer.count_tokens(prompt) > MAX_TOKEN:
             prompt = optimizer.truncate_text(prompt, MAX_TOKEN)
 
-        print(prompt)
-
-        # completion = client.chat.completions.create(
-        #     model= MODEL_NAME,
-        #     store=True,
-        #     max_tokens=MAX_TOKEN,
-        #     temperature=TEMPERATURE,
-        #     messages=[
-        #         {
-        #             "role": "user",
-        #             "content": f"""{prompt}"""
-        #         }
-        #     ]
-        # )
-        # if completion:
-        #     object_completion_message = completion.choices[0].message
-        #     return {type: object_completion_message.content}
+        completion = self.client.chat.completions.create(
+            model= MODEL_NAME,
+            store=True,
+            max_tokens=MAX_TOKEN,
+            temperature=TEMPERATURE,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""{prompt}"""
+                }
+            ]
+        )
+        if completion:
+            object_completion_message = completion.choices[0].message
+            return {type: object_completion_message.content}
 
     def get_answer_with_details(self, question):
         # Check if collection is empty
