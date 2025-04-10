@@ -354,6 +354,12 @@ Sau khi lấy được chương trình khuyến mãi, thì dưới đây là cá
 
 Để người dùng có thể chuyển hướng đến các danh mục sản phẩm mình thích được nhanh chóng hơn.
 Dưới đây là cách thức lấy danh mục sản phẩm của website:
+* Cách làm:
+  * B1. Lấy danh mục từ hàm getCategories().
+  * B2. Kiểm tra có dữ liệu không (if category is not empty)
+  * B3. Vòng lặp hiển thị danh mục: link,tên,ảnh đại diện,icon
+  * B4. Nếu có danh mục con, tiếp tục lặp
+  * B5. Hiển thị thông tin danh mục con: link,tên,ảnh đại diện,icon
 
 ```
 {% raw %}
@@ -364,6 +370,14 @@ Dưới đây là cách thức lấy danh mục sản phẩm của website:
         {{ c.name }}
         {{ c.imageUri }}
         {{ c.iconUri }}
+        {% if c.childs %}
+          {% for c1 in c.childs %}
+            {{ c1.viewLink }}
+            {{ c1.name }}
+            {{ c1.imageUri }}
+            {{ c1.iconUri }}
+          {% endfor %}
+        {% endif%}
     {% endfor %}
 {% endif%}
 {% endraw %}
@@ -385,7 +399,7 @@ Dưới đây là cách thức lấy thương hiệu:
     {% if l_brand not empty) %}
         {% for b in l_brand %}
           {% if b.imageUri is not empty %}
-           {{ b.name }}
+           {{ b.name | raw }}
            {{ b.viewLink }}
            {{ b.imageUri }}   
           {% endif %}

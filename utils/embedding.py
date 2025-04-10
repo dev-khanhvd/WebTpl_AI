@@ -213,6 +213,7 @@ class Embedding:
             "banner_block": "banner",
             "home_products_list_block": "sản phẩm",
             "home_product_category": "danh mục sản phẩm",
+            "home_menu_product_category": "menu danh mục sản phẩm",
             "home_promotion_details": "chương trình khuyến mãi",
             "home_article_news": "bài viết tin tức",
             "home_brands": "thương hiệu",
@@ -223,6 +224,9 @@ class Embedding:
         text_limit = ""
         if "limit" in options:
             text_limit = f"với số lượng {options['limit']} {text}"
+
+        if type_map.get(type) == 'menu danh mục sản phẩm':
+            text = "menu danh mục sản phẩm và lấy ra các danh mục con (nếu có)"
 
         if not best_match:
             return "🚫 No matching logic found."

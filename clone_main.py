@@ -25,7 +25,7 @@ def main():
 
     folder_url = ''
     while True:
-        # clear_screen()
+        clear_screen()
 
         print("\n=== Website Cloner Tool ===")
         for i, option in enumerate(options):

@@ -3,6 +3,7 @@ import subprocess
 
 
 from agents.home_page import HomePage
+from agents.menu_part import MenuPart
 
 class BaseAgent:
     def __init__(self, base_dir):
@@ -11,6 +12,7 @@ class BaseAgent:
         print("\n=== Menu xử lý fill logic website ===")
         options = [
             'Trang chủ',
+            'Menu trang chủ',
             'Danh mục sản phẩm',
             'Chi tiết sản phẩm',
             'Giỏ hàng',
@@ -18,7 +20,7 @@ class BaseAgent:
             'Thanh toán thành công',
         ]
         while True:
-            self.clear_screen()
+            # self.clear_screen()
             print("\n=== Menu xử lý fill logic website ===")
             for i, option in enumerate(options):
                 print(f"{i + 1}. {option}")
@@ -40,6 +42,8 @@ class BaseAgent:
                 home_page.menu_agent()
                 break
             elif menu_choice == 2:
+                menu_part = MenuPart(self.base_dir)
+                menu_part.load_menu()
                 continue
             elif menu_choice == 3:
                 continue

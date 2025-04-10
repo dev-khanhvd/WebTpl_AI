@@ -234,7 +234,7 @@ class HomePage:
             if elements:
                 potential_parents.extend(elements)
 
-        parent_wrapper = None
+
         if potential_parents:
             parent_wrapper = potential_parents[0]
             item = None
