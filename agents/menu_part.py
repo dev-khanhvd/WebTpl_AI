@@ -18,12 +18,9 @@ class MenuPart:
                 template_content = file.read()
             menu_wrapper = input(f"Nhập wrapper menu cho menu vùng '{class_input.lower()}' : ").strip()
             if template_content:
-                soup = self.extract_menu(template_content, menu_wrapper)
-                if soup:
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        f.write(str(soup.prettify(formatter=None)))
+                self.extract_menu(template_content, menu_wrapper, file_path)
 
-    def extract_menu(self, html, wrapper_selector):
+    def extract_menu(self, html, wrapper_selector, file_path):
         potential_parents = []
         soup = BeautifulSoup(html, "html.parser")
         elements = soup.find_all(id=re.compile(wrapper_selector))
@@ -38,14 +35,34 @@ class MenuPart:
             for ul in parent_wrapper.find_all("ul"):
                 self.filter_ul(ul)
 
-            menu_html = str(parent_wrapper)
-
             embedings = Embedding(self.base_dir)
-            question = 'Danh mục sản phẩm'
-            result = embedings.process_question(question, 'home_menu_product_category', menu_html)
-            if result:
-                parent_wrapper.replace_with(BeautifulSoup(f"\n{result}\n", "html.parser"))
-                return soup
+
+            menu_html1 = str(parent_wrapper)
+            file_path1 = os.path.join(self.base_dir, self.template_mapping.get('menu', ""))
+            question1 = 'Danh mục sản phẩm'
+            menu_result_1 = embedings.process_question(question1, 'home_menu_product_category', menu_html1)
+            with open(file_path1, "w", encoding="utf-8") as f1:
+                f1.write(menu_result_1)
+
+            menu_html2 = str(parent_wrapper)
+            file_path2 = os.path.join(self.base_dir, self.template_mapping.get('menu_custom', ""))
+            question2 = 'Danh mục tự tạo'
+            menu_result_2 = embedings.process_question(question2, 'home_menu_product_category', menu_html2)
+            with open(file_path2, "w", encoding="utf-8") as f2:
+                f2.write(menu_result_2)
+
+            twig_code = """
+            {% if(menuIsExisted({'type': 'header' })) %}
+                {% include 'other/menu_custom' %}
+            {% else %}
+                {% include 'other/menu' %}
+            {% endif %}
+            """.strip()
+
+            parent_wrapper.replace_with(soup.new_string(twig_code))
+
+            with open(file_path, "w", encoding="utf-8") as f3:
+                f3.write(str(soup.prettify()))
 
         return None
 

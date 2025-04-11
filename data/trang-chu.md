@@ -385,6 +385,62 @@ Dưới đây là cách thức lấy danh mục sản phẩm của website:
 
 <figure><img src="../.gitbook/assets/image (24).png" alt=""><figcaption><p>Ảnh đại diện danh mục sản phẩm</p></figcaption></figure>
 
+### Danh mục tự tạo
+Người dùng có thể tự tạo danh mục cho riêng menu website theo cách của mình 
+Dưới đây là cách thức lấy danh mục tự tạo của website:
+
+* Cách làm:
+  * B1. Lấy danh mục từ hàm getMenus({'type':'header'}).
+  * B2. Kiểm tra có dữ liệu không (if menu is not empty)
+  * B3. Vòng lặp hiển thị danh mục: link,tên,ảnh đại diện,icon
+  * B4. Nếu m.type nằm trong arrTypeCate, gọi hàm getCategoryTypeMenu(m.type) để lấy danh mục tương ứng kiểu và gán vào categoryCustom:
+    * B4.1. Nếu categoryCustom không rỗng if(categoryCustom is not empty)
+    * B4.2. Duyệt qua từng danh mục c trong categoryCustom: link,tên,ảnh đại diện,icon
+    * B4.3. Nếu c có childs, duyệt tiếp và hiển thị viewLink + name của từng c1.
+  * B5. Nếu m.type KHÔNG nằm trong arrTypeCate
+    * B5.1. Hiển thị: link,tên,ảnh đại diện,icon
+    * B5.2. Nếu m có childs, duyệt và hiển thị viewLink + name của từng c1.
+  
+```
+{% raw %}
+{% set menu = getMenus({'type':'header'}) %}
+{% if(menu is not empty) %}
+    {% for m in menu %}
+        {% set arrTypeCate = m.typeCates %}
+        {% if m.type in arrTypeCate %}
+            {% set categoryCustom = getCategoryTypeMenu(m.type) %}
+            {% if(categoryCustom is not empty) %}
+                {% for c in categoryCustom %}
+                    {{ c.viewLink }}
+                    {{ c.name }}
+                    {% if(c.iconUri) %}
+                        {{ c.iconUri }}
+                    {% endif %}
+                    {% if(c.childs) %}
+                        {% for c1 in c.childs %}
+                            {{ c1.viewLink }}
+                            {{ c1.name }}
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% else %}
+            {{ m.viewLink }}
+            {{ m.name }}
+            {% if(m.iconUri) %}
+                {{ m.iconUri }}
+            {% endif %}
+            {% if(m.childs) %}
+                {% for c1 in m.childs %}
+                    {{  c1.viewLink }}
+                    {{  c1.name }}
+                {% endfor %}
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+{% endif %}
+{% endraw %}
+```
 ### Thương hiệu
 Là nơi để hiển thị các thương hiệu mà doanh nghiệp bán
 Dưới đây là cách thức lấy thương hiệu:
