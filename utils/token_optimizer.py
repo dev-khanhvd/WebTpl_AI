@@ -12,22 +12,13 @@ class TokenOptimizer:
         self.encoding = tiktoken.encoding_for_model(model_name)
 
     def count_tokens(self, text):
-        """
-        Đếm số lượng token trong văn bản
-        """
         return len(self.encoding.encode(text))
 
     def truncate_text(self, text, max_tokens):
-        """
-        Cắt văn bản để giảm số lượng token
-        """
         tokens = self.encoding.encode(text)
         return self.encoding.decode(tokens[:max_tokens])
 
     def chunk_text(self, text, max_tokens_per_chunk):
-        """
-        Chia văn bản thành các đoạn nhỏ
-        """
         tokens = self.encoding.encode(text)
         chunks = []
         for i in range(0, len(tokens), max_tokens_per_chunk):
@@ -37,9 +28,6 @@ class TokenOptimizer:
         return chunks
 
     def optimize_prompt(self, prompt):
-        """
-        Tối ưu hóa prompt để giảm token
-        """
         # Loại bỏ khoảng trắng thừa
         prompt = ' '.join(prompt.split())
 

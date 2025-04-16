@@ -5,12 +5,12 @@ import os
 from config import MODEL_NAME, MAX_TOKEN, OPENAI_API_KEY, TEMPERATURE
 from vector_db.chroma_db import ChromaDB
 from openai import OpenAI
+from bs4 import BeautifulSoup
 from utils.token_optimizer import TokenOptimizer
 
 class Embedding:
     def __init__(self, base_dir):
         self.base_dir = base_dir
-        self.data_json = "./data/data_training.json"
         self.data = "./data"
         self.client = OpenAI(
             api_key=OPENAI_API_KEY
@@ -52,7 +52,6 @@ class Embedding:
             sections = self.extract_sections(file_path)
 
             for section in sections:
-                # print(section)
                 if not section['title'] or not section['description']:
                     continue
 
@@ -215,6 +214,7 @@ class Embedding:
             "home_product_category": "danh mục sản phẩm",
             "home_menu_product_category": "menu danh mục sản phẩm",
             "home_promotion_details": "chương trình khuyến mãi",
+            "home_products_promotion_details": "sản phẩm trong chương trình khuyến mãi",
             "home_article_news": "bài viết tin tức",
             "home_brands": "thương hiệu",
             "home_album": "album"
@@ -232,11 +232,10 @@ class Embedding:
             return "🚫 No matching logic found."
 
         prompt = f"""Dựa trên thông tin sau, hãy tạo mã Twig để hiển thị {text} {text_limit}:
-                               - Ví dụ: {best_match['example']}
-                               {best_match['guide']}
-                               {items}
-                                Sử dụng twig với mã logic ở trên, không thay đổi mã html 
-                          """
+                 - Ví dụ: {best_match['example']}
+                 {best_match['guide']}
+                 {items}
+                  Sử dụng twig với mã logic ở trên, không thay đổi mã html """
         print("Processing, please wait a moment!")
 
         optimizer = TokenOptimizer()
@@ -361,24 +360,69 @@ class Embedding:
         relevant_section = sections[1].split("### ")[0]  # Lấy phần trước tiêu đề tiếp theo
         return f"{best_header}\n{relevant_section}"
 
-    def add_training_data(self, document, metadata=None):
-        if metadata is None:
-            metadata = {}
+    def add_training_data(self, documents, metadatas=None):
+        if isinstance(documents, str):
+            documents = [documents]
 
-        if "answer" not in metadata:
-            metadata["answer"] = document
+        if metadatas is None:
+            metadatas = [{} for _ in documents]
+        elif isinstance(metadatas, dict):
+            metadatas = [metadatas for _ in documents]
 
-        response  = self.client.embeddings.create(
+        for i in range(len(metadatas)):
+            if "answer" not in metadatas[i]:
+                metadatas[i]["answer"] = documents[i]
+
+        response = self.client.embeddings.create(
             model=self.model,
-            input=document
+            input=documents
         )
-        embedding = response.data[0].embedding
-        doc_id = f"doc_{abs(hash(document))}"
+        embeddings = [item.embedding for item in response.data]
 
-        # Add to collection
+        ids = [f"doc_{uuid.uuid4()}" for _ in documents]
+
+        # Thêm vào ChromaDB
         self.collection.add(
-            embeddings=[embedding],
-            documents=[document],
-            metadatas=[metadata],
-            ids=[doc_id]
+            embeddings=embeddings,
+            documents=documents,
+            metadatas=metadatas,
+            ids=ids
         )
+
+
+    def detect_position_html(self, wrapper_pattern, soup, question=None, type=None, options = None):
+        if not isinstance(soup, BeautifulSoup):
+            soup = BeautifulSoup(soup, 'html.parser')
+
+            # Step 1: Find potential parent wrappers based on patterns
+        potential_parents = []
+        for pattern in wrapper_pattern:
+            # Try to find by ID first, then fall back to class
+            elements = soup.find_all(id=re.compile(pattern))
+            if not elements:
+                elements = soup.find_all(class_=re.compile(pattern))
+
+            if elements:
+                potential_parents.extend(elements)
+
+
+        if potential_parents:
+            parent_wrapper = potential_parents[0]
+            item = None
+            if parent_wrapper.contents:
+                for child in parent_wrapper.contents:
+                    if child and not isinstance(child, str) or (isinstance(child, str) and child.strip()):
+                        item = child
+                        break
+            if not item:
+                item = parent_wrapper.find()
+
+            parent_wrapper.clear()
+            result = self.process_question(question, type, item, options)
+            if result:
+                twig_soup = BeautifulSoup(f"\n{result}\n", "html.parser")
+                parent_wrapper.append(twig_soup)
+
+                return soup
+
+        return None

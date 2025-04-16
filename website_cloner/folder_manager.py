@@ -105,3 +105,8 @@ class FolderManager:
 
             except requests.RequestException:
                 print(f"Lỗi tải CSS: {css_url}")
+
+    def save_file(self, file_path ,content):
+        if content:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(str(content.prettify(formatter=None)))

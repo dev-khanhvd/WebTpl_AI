@@ -273,16 +273,18 @@ Những sản phẩm được nhập giá mới và giá cũ sẽ hiển thị t
 <figure><img src="../.gitbook/assets/image (44).png" alt=""><figcaption></figcaption></figure>
 
 
-### Chương trình khuyến mãi
-Là nơi để thể hiện danh sách sản phẩm theo chương trình khuyến mãi và có đếm ngược theo ID của chương trình khuyến mãi đang chạy
+### Chương trình promotion
+Là nơi để thể hiện chương trình khuyến mãi và có đếm ngược theo ID của chương trình khuyến mãi đang chạy
 Dưới đây là cách thức lấy chương trình khuyến mãi và sản phẩm theo chương trình khuyến mãi đó:
 
 * Cách làm:
-  * B1. Lấy ID của chương trình khuyến mãi
-  * B2. Nếu tồn tại, lấy dữ liệu khuyến mãi từ getPromotions()
-  * B3. Hiển thị tiêu đề theo tên chương trình khuyến mãi
-  * B4. Thêm bộ đếm ngược dựa trên promotionObj.endDate
-  * B5. Cung cấp nút "Xem tất cả" để link promotionObj.viewLink
+  * B1. Lấy giá trị promotionId từ getKeyContentValue('PROMOTION_ID')
+  * B2. Kiểm tra nếu tồn tại promotionId (if promotionId is not null)
+  * B3. Lấy danh sách promotion tương ứng với promotionId từ hàm getPromotions()
+  * B4. Kiểm tra nếu tồn tại danh sách promotion(if promotion is not empty)
+  * B5. Gán phần tử đầu tiên của promotion cho biến promotionObj
+  * B6. Hiển thị các thông tin của promotion: Tên,Link xem chi tiết,Ảnh banner,Ngày bắt đầu,Ngày kết thúc
+  * B7. Cung cấp nút "Xem tất cả" để link promotionObj.viewLink
   
 ```
 {% raw %}
@@ -300,7 +302,7 @@ Dưới đây là cách thức lấy chương trình khuyến mãi và sản ph�
 {% endif %}
 {% endraw %}
 ```
-### Sản phẩm trong chương trình khuyến mãi
+### Sản phẩm theo chương trình promotion
 Sau khi lấy được chương trình khuyến mãi, thì dưới đây là cách lấy ra sản phẩm trong chương trình khuyến mãi đó
 * Cách làm:
   * B1. Lấy tối đa sản phẩm trong chương trình khuyến mãi theo param limit từ getPromotionProduct().
