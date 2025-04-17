@@ -3,9 +3,8 @@ import uuid
 import re
 import os
 from config import MODEL_NAME, MAX_TOKEN, OPENAI_API_KEY, TEMPERATURE
-from vector_db.chroma_db import ChromaDB
+from vector_db.elastic_search_db import ElasticsearchDB
 from openai import OpenAI
-from bs4 import BeautifulSoup
 from utils.token_optimizer import TokenOptimizer
 
 class Embedding:
@@ -16,19 +15,13 @@ class Embedding:
             api_key=OPENAI_API_KEY
         )
         self.model = 'text-embedding-3-small'
-        # Create ChromaDB instance
-        chroma_db = ChromaDB(self.base_dir)
+
+        # Create ElasticsearchDB instance
+        es_db = ElasticsearchDB(base_dir=self.base_dir, index_name='data_training')
 
         # Directly assign client and collection
-        self.chroma_client = chroma_db.chroma_client
-        self.collection = chroma_db.collection
+        self.collection = es_db
 
-        self.types = [
-            'home_banner_main_block',
-            'home_products_list_block'
-            'home_promotion_details'
-            'home_product_category'
-        ]
     def save_embeddings(self):
         """
         Save embeddings for markdown files in the specified directory
@@ -100,7 +93,7 @@ class Embedding:
                 documents=documents
             )
 
-        print(f"Đã lưu {len(self.collection.get()['ids'])} sections vào ChromaDB")
+        print(f"Đã lưu {len(self.collection.get()['ids'])} sections vào Elasticsearch")
 
     def extract_sections(self,file_path):
         with open(file_path, "r", encoding="utf-8") as f:
@@ -176,9 +169,9 @@ class Embedding:
         return sections
 
     def delete_embeddings(self):
-        self.chroma_client.delete_collection("data_training")
+        self.collection.delete_collection()
         # self.collection.delete(ids=ids)
-        print("✅ Deleted all data in ChromaDB.")
+        print("✅ Deleted all data in Elasticsearch.")
 
     def get_embeddings(self):
         all_items = self.collection.get()
@@ -243,6 +236,7 @@ class Embedding:
         if optimizer.count_tokens(prompt) > MAX_TOKEN:
             prompt = optimizer.truncate_text(prompt, MAX_TOKEN)
 
+        print(prompt)
         completion = self.client.chat.completions.create(
             model= MODEL_NAME,
             store=True,
@@ -268,12 +262,17 @@ class Embedding:
             model= self.model,
             input=question
         )
-        # Perform semantic search
-        results = self.collection.query(
-            query_embeddings=[response.data[0].embedding],
-            n_results=5,
-            include=["documents", "metadatas", "distances"]
-        )
+        query_embedding = response.data[0].embedding
+
+        try:
+            results = self.collection.query(
+                query_embedding=query_embedding,
+                n_results=5
+            )
+        except Exception as e:
+            print(f"Query error: {str(e)}")
+            return None
+
         # Validate search results
         if (not results.get("documents") or
                 not results["documents"][0]):
@@ -360,69 +359,24 @@ class Embedding:
         relevant_section = sections[1].split("### ")[0]  # Lấy phần trước tiêu đề tiếp theo
         return f"{best_header}\n{relevant_section}"
 
-    def add_training_data(self, documents, metadatas=None):
-        if isinstance(documents, str):
-            documents = [documents]
+    def add_training_data(self, document, metadata=None):
+        if metadata is None:
+            metadata = {}
 
-        if metadatas is None:
-            metadatas = [{} for _ in documents]
-        elif isinstance(metadatas, dict):
-            metadatas = [metadatas for _ in documents]
+        if "answer" not in metadata:
+            metadata["answer"] = document
 
-        for i in range(len(metadatas)):
-            if "answer" not in metadatas[i]:
-                metadatas[i]["answer"] = documents[i]
-
-        response = self.client.embeddings.create(
+        response  = self.client.embeddings.create(
             model=self.model,
-            input=documents
+            input=document
         )
-        embeddings = [item.embedding for item in response.data]
+        embedding = response.data[0].embedding
+        doc_id = f"doc_{abs(hash(document))}"
 
-        ids = [f"doc_{uuid.uuid4()}" for _ in documents]
-
-        # Thêm vào ChromaDB
+        # Add to collection
         self.collection.add(
-            embeddings=embeddings,
-            documents=documents,
-            metadatas=metadatas,
-            ids=ids
+            embeddings=[embedding],
+            documents=[document],
+            metadatas=[metadata],
+            ids=[doc_id]
         )
-
-
-    def detect_position_html(self, wrapper_pattern, soup, question=None, type=None, options = None):
-        if not isinstance(soup, BeautifulSoup):
-            soup = BeautifulSoup(soup, 'html.parser')
-
-            # Step 1: Find potential parent wrappers based on patterns
-        potential_parents = []
-        for pattern in wrapper_pattern:
-            # Try to find by ID first, then fall back to class
-            elements = soup.find_all(id=re.compile(pattern))
-            if not elements:
-                elements = soup.find_all(class_=re.compile(pattern))
-
-            if elements:
-                potential_parents.extend(elements)
-
-
-        if potential_parents:
-            parent_wrapper = potential_parents[0]
-            item = None
-            if parent_wrapper.contents:
-                for child in parent_wrapper.contents:
-                    if child and not isinstance(child, str) or (isinstance(child, str) and child.strip()):
-                        item = child
-                        break
-            if not item:
-                item = parent_wrapper.find()
-
-            parent_wrapper.clear()
-            result = self.process_question(question, type, item, options)
-            if result:
-                twig_soup = BeautifulSoup(f"\n{result}\n", "html.parser")
-                parent_wrapper.append(twig_soup)
-
-                return soup
-
-        return None
