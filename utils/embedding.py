@@ -6,6 +6,7 @@ from config import MODEL_NAME, MAX_TOKEN, OPENAI_API_KEY, TEMPERATURE
 from vector_db.elastic_search_db import ElasticsearchDB
 from openai import OpenAI
 from utils.token_optimizer import TokenOptimizer
+import datetime
 
 class Embedding:
     def __init__(self, base_dir):
@@ -254,6 +255,9 @@ class Embedding:
             return {type: object_completion_message.content}
 
     def get_answer_with_details(self, question):
+        if not question:
+            return None
+
         # Check if collection is empty
         if self.collection.count() == 0:
             return None
@@ -380,3 +384,44 @@ class Embedding:
             metadatas=[metadata],
             ids=[doc_id]
         )
+
+    def save_embedding_question(self, question):
+        if not question or not isinstance(question, str) or question.strip() == "":
+            print("Câu hỏi không hợp lệ hoặc trống.")
+            return None
+
+        try:
+            response = self.client.embeddings.create(
+                model=self.model,
+                input=question
+            )
+            query_embedding = response.data[0].embedding
+
+            es_db_embedding = ElasticsearchDB(base_dir=self.base_dir, index_name='data_embedding')
+
+            metadata = {
+                'question': question,
+                'timestamp': datetime.datetime.now().isoformat(),
+                'type': 'embedding'
+            }
+
+            doc_id = str(uuid.uuid4())
+
+            doc = {
+                "embedding": query_embedding,
+                "metadata": metadata,
+                "document": question  # Lưu câu hỏi làm document để dễ truy xuất
+            }
+
+            result = es_db_embedding.client.index(index='data_embedding', id=doc_id, document=doc)
+
+            if result['result'] == 'created':
+                print(f"Đã lưu embedding cho câu hỏi: '{question}'")
+                return doc_id
+            else:
+                print(f"Kết quả không xác định: {result['result']}")
+                return None
+
+        except Exception as e:
+            print(f"Lỗi khi lưu embedding: {str(e)}")
+            return None
