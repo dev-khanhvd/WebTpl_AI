@@ -2,11 +2,12 @@ import json
 import uuid
 import re
 import os
+
 from config import MODEL_NAME, MAX_TOKEN, OPENAI_API_KEY, TEMPERATURE
 from vector_db.elastic_search_db import ElasticsearchDB
 from openai import OpenAI
 from utils.token_optimizer import TokenOptimizer
-import datetime
+from sentence_transformers import SentenceTransformer
 
 class Embedding:
     def __init__(self, base_dir):
@@ -15,7 +16,7 @@ class Embedding:
         self.client = OpenAI(
             api_key=OPENAI_API_KEY
         )
-        self.model = 'text-embedding-3-small'
+        self.model = SentenceTransformer('all-mpnet-base-v2')
 
         # Create ElasticsearchDB instance
         es_db = ElasticsearchDB(base_dir=self.base_dir, index_name='data_training')
@@ -65,11 +66,7 @@ class Embedding:
 
                 # Xử lý theo batch
                 if len(documents) >= batch_size:
-                    response = self.client.embeddings.create(
-                        model=self.model,
-                        input=documents
-                    )
-                    embeddings = [item.embedding for item in response.data]
+                    embeddings = self.model.encode(documents).tolist()
                     self.collection.add(
                         embeddings=embeddings,
                         metadatas=metadatas,
@@ -82,11 +79,7 @@ class Embedding:
 
         # Process the final batch
         if len(documents) > 0:
-            response = self.client.embeddings.create(
-                model=self.model,
-                input=documents
-            )
-            embeddings = [item.embedding for item in response.data]
+            embeddings = self.model.encode(documents).tolist()
             self.collection.add(
                 embeddings=embeddings,
                 metadatas=metadatas,
@@ -217,7 +210,10 @@ class Embedding:
 
         text_limit = ""
         if "limit" in options:
-            text_limit = f"với số lượng {options['limit']} {text}"
+            text_limit += f"với số lượng {options['limit']} {text} "
+
+        if 'product_type' in options:
+            text_limit += f"với param {options['product_type']}"
 
         if type_map.get(type) == 'menu danh mục sản phẩm':
             text = "menu danh mục sản phẩm và lấy ra các danh mục con (nếu có)"
@@ -262,11 +258,7 @@ class Embedding:
         if self.collection.count() == 0:
             return None
 
-        response = self.client.embeddings.create(
-            model= self.model,
-            input=question
-        )
-        query_embedding = response.data[0].embedding
+        query_embedding = self.model.encode(question).tolist()
 
         try:
             results = self.collection.query(
@@ -362,66 +354,3 @@ class Embedding:
 
         relevant_section = sections[1].split("### ")[0]  # Lấy phần trước tiêu đề tiếp theo
         return f"{best_header}\n{relevant_section}"
-
-    def add_training_data(self, document, metadata=None):
-        if metadata is None:
-            metadata = {}
-
-        if "answer" not in metadata:
-            metadata["answer"] = document
-
-        response  = self.client.embeddings.create(
-            model=self.model,
-            input=document
-        )
-        embedding = response.data[0].embedding
-        doc_id = f"doc_{abs(hash(document))}"
-
-        # Add to collection
-        self.collection.add(
-            embeddings=[embedding],
-            documents=[document],
-            metadatas=[metadata],
-            ids=[doc_id]
-        )
-
-    def save_embedding_question(self, question):
-        if not question or not isinstance(question, str) or question.strip() == "":
-            print("Câu hỏi không hợp lệ hoặc trống.")
-            return None
-
-        try:
-            response = self.client.embeddings.create(
-                model=self.model,
-                input=question
-            )
-            query_embedding = response.data[0].embedding
-
-            es_db_embedding = ElasticsearchDB(base_dir=self.base_dir, index_name='data_embedding')
-
-            metadata = {
-                'question': question,
-                'timestamp': datetime.datetime.now().isoformat(),
-                'type': 'embedding'
-            }
-
-            doc_id = str(uuid.uuid4())
-
-            doc = {
-                "embedding": query_embedding,
-                "metadata": metadata,
-                "document": question  # Lưu câu hỏi làm document để dễ truy xuất
-            }
-
-            result = es_db_embedding.client.index(index='data_embedding', id=doc_id, document=doc)
-
-            if result['result'] == 'created':
-                print(f"Đã lưu embedding cho câu hỏi: '{question}'")
-                return doc_id
-            else:
-                print(f"Kết quả không xác định: {result['result']}")
-                return None
-
-        except Exception as e:
-            print(f"Lỗi khi lưu embedding: {str(e)}")
-            return None

@@ -25,7 +25,7 @@ def main():
 
     folder_url = ''
     while True:
-        clear_screen()
+        # clear_screen()
 
         print("\n=== Website Cloner Tool ===")
         for i, option in enumerate(options):
@@ -137,7 +137,6 @@ def main():
             test = auto_embedding.get_embeddings()
             print(test)
             continue
-
         else:
             print("Lựa chọn không hợp lệ. Vui lòng thử lại!")
 

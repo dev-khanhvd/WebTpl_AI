@@ -95,102 +95,17 @@ như chức năng của từng banner) sẽ được tạo trong trang quản tr
 
 <figure><img src="../.gitbook/assets/image (23).png" alt=""><figcaption><p>Banner trang chủ</p></figcaption></figure>
 
-### Sản phẩm mới
 
-Những sản phẩm được tích sản phẩm mới sẽ hiển thị tại đây
+### Sản phẩm trang chủ 
 
-* Cách làm:
-  * B1. Lấy tối đa sản phẩm mới theo param limit từ searchProducts().
-  * B2. Kiểm tra có dữ liệu không (if newProduct is not empty)
-  * B3. Vòng lặp hiển thị sản phẩm: ảnh, tên, giá, đánh giá, nút hành động
-  * B4. Nếu có giảm giá, hiển thị phần trăm giảm giá
-  * B5. Nút hành động: thêm vào giỏ, yêu thích, xem nhanh (Thêm thuộc tính data-id="{{ np.id }}")
-  * B6. Hiển thị giá theo điều kiện (liên hệ, giảm giá, giá gốc)
-```
-{% raw %}
-{% set newProduct = searchProducts({'limit':8,'showNew':1}) %}
-{% if newProduct is not empty %}
-      {% for np in newProduct %}
-         {{ np.id }}
-         {{ np.thumbnailUri }}
-         {{ np.viewLink }}
-         {{ np.name}}
-         
-         {% if(np.calcDiscountPercent > 0) %}
-                {{ h.calcDiscountPercent }}%
-         {% endif %}
-         {% if(np.contactPrice or (np.price == 0)) %}   
-               Liên hệ
-         {% elseif np.priceAfterDiscount > 0 %}
-              {{ np.priceAfterDiscount | number_format(0) }}₫
-              {{ np.price | number_format(0) }}₫
-         {% elseif (np.oldPrice > 0) %}
-                {{ np.price | number_format(0) }}₫
-                {{ np.oldPrice | number_format(0) }}₫
-         {% else %}
-                 {{ np.price | number_format(0) }}₫
-         {% endif %}
-      {% endfor %}
-    {% endif %}
-{% endraw %}
-```
+Người dùng có thể lựa chọn các sản phẩm muốn hiện ở trang chủ theo dạng tick để hiển thị ra sản phẩm
 
-<figure><img src="../.gitbook/assets/image (47).png" alt=""><figcaption></figcaption></figure>
-
-<figure><img src="../.gitbook/assets/image (25).png" alt=""><figcaption><p>Sản phẩm mới</p></figcaption></figure>
-
-### Sản phẩm hot
-
-Những sản phẩm được tích sản phẩm hot sẽ hiển thị tại đây
+Có 3 dạng tick để hiển thị trên trang chủ: tick trang chủ, tick mới hoặc tick hot
+Dưới đây là cách thức lấy sản phẩm được tick của website:
 
 * Cách làm:
-  * B1. Lấy tối đa sản phẩm hot theo param limit từ searchProducts().
-  * B2. Kiểm tra có dữ liệu không (if hotProduct is not empty)
-  * B3. Vòng lặp hiển thị sản phẩm: ảnh, tên, giá, đánh giá, nút hành động
-  * B4. Nếu có giảm giá, hiển thị phần trăm giảm giá
-  * B5. Nút hành động: thêm vào giỏ, yêu thích, xem nhanh (Thêm thuộc tính data-id="{{ np.id }}")
-  * B6. Hiển thị giá theo điều kiện (liên hệ, giảm giá, giá gốc)
-```
-{% raw %}
-{% set hotProduct = searchProducts({'limit':8,'showHot':1}) %}
-{% if hotProduct is not empty %}
-      {% for hp in hotProduct %}
-         {{ hp.thumbnailUri }}
-         {{ hp.viewLink }}
-         {{ hp.name}}
-         
-         {% if(hp.calcDiscountPercent > 0) %}
-                {{ hp.calcDiscountPercent }}%
-         {% endif %}   
-          {% if(hp.contactPrice or (hp.price == 0)) %}   
-               Liên hệ
-         {% elseif hp.priceAfterDiscount > 0 %}
-              {{ hp.priceAfterDiscount | number_format(0) }}₫
-              {{ hp.price | number_format(0) }}₫
-         {% elseif (hp.oldPrice > 0) %}
-                {{ hp.price | number_format(0) }}₫
-                {{ hp.oldPrice | number_format(0) }}₫
-         {% else %}
-                 {{ hp.price | number_format(0) }}₫
-         {% endif %}
-      {% endfor %}
-    {% endif %}
-{% endraw %}
-```
-
-<figure><img src="../.gitbook/assets/image (46).png" alt=""><figcaption></figcaption></figure>
-
-<figure><img src="../.gitbook/assets/image (26).png" alt=""><figcaption><p>Sản phẩm hot</p></figcaption></figure>
-
-
-### Sản phẩm tick trang chủ 
-
-Người dùng có thể lựa chọn các sản phẩm muốn hiện ở trang chủ theo dạng tick trang chủ để hiển thị ra sản phẩm 
-
-Dưới đây là cách thức lấy sản phẩm được tick trang chủ của website:
-
-* Cách làm:
-  * B1. Lấy tối đa sản phẩm tick trang chủ theo param limit từ searchProducts().
+  * B1. Lấy tối đa sản phẩm tick theo param limit từ searchProducts().
+  * B2. Nếu có param showHot,showHome, showNew thì thêm param này vào searchProducts().
   * B2. Kiểm tra có dữ liệu không (if homeProduct is not empty)
   * B3. Vòng lặp hiển thị sản phẩm: ảnh, tên, giá, đánh giá, nút hành động
   * B4. Nếu có giảm giá, hiển thị phần trăm giảm giá
@@ -225,53 +140,11 @@ Dưới đây là cách thức lấy sản phẩm được tick trang chủ củ
 {% endraw %}
 ```
 
-Những sản phẩm được tích trang chủ sẽ hiển thị tại đây
+Những sản phẩm được tick trên trang chủ sẽ hiển thị tại đây
 
 <figure><img src="../.gitbook/assets/image (49).png" alt=""><figcaption></figcaption></figure>
 
 <figure><img src="../.gitbook/assets/image (27).png" alt=""><figcaption><p>Sản phẩm được tick trang chủ</p></figcaption></figure>
-
-### Sản phẩm giảm giá
-
-Những sản phẩm được nhập giá mới và giá cũ sẽ hiển thị tại đây
-
-* Cách làm:
-  * B1. Lấy tối đa sản phẩm giảm giá theo param limit từ searchProducts().
-  * B2. Kiểm tra có dữ liệu không (if discountProduct is not empty)
-  * B3. Vòng lặp hiển thị sản phẩm: ảnh, tên, giá, đánh giá, nút hành động
-  * B4. Nếu có giảm giá, hiển thị phần trăm giảm giá
-  * B5. Nút hành động: thêm vào giỏ, yêu thích, xem nhanh (Thêm thuộc tính data-id="{{ np.id }}")
-  * B6. Hiển thị giá theo điều kiện (liên hệ, giảm giá, giá gốc)
-
-```
-{% raw %}
-{% set discountProduct = searchProducts({'limit':8,'discount':1}) %}
-{% if discountProduct is not empty %}
-      {% for ds in discountProduct %}
-         {{ ds.thumbnailUri }}
-         {{ ds.viewLink }}
-         {{ ds.name}}
-         
-         {% if(ds.calcDiscountPercent > 0) %}
-                {{ ds.calcDiscountPercent }}%
-         {% endif %}   
-         {% if(ds.contactPrice or (ds.price == 0)) %}   
-               Liên hệ
-         {% elseif ds.priceAfterDiscount > 0 %}
-              {{ ds.priceAfterDiscount | number_format(0) }}₫
-              {{ ds.price | number_format(0) }}₫
-         {% elseif (ds.oldPrice > 0) %}
-                {{ ds.price | number_format(0) }}₫
-                {{ ds.oldPrice | number_format(0) }}₫
-         {% else %}
-                 {{ ds.price | number_format(0) }}₫
-         {% endif %}
-      {% endfor %}
-    {% endif %}
-{% endraw %}
-```
-<figure><img src="../.gitbook/assets/image (44).png" alt=""><figcaption></figcaption></figure>
-
 
 ### Chương trình promotion
 Là nơi để thể hiện chương trình khuyến mãi và có đếm ngược theo ID của chương trình khuyến mãi đang chạy
@@ -302,7 +175,7 @@ Dưới đây là cách thức lấy chương trình khuyến mãi và sản ph�
 {% endif %}
 {% endraw %}
 ```
-### Sản phẩm theo chương trình promotion
+### Sản phẩm trong CTKM
 Sau khi lấy được chương trình khuyến mãi, thì dưới đây là cách lấy ra sản phẩm trong chương trình khuyến mãi đó
 * Cách làm:
   * B1. Lấy tối đa sản phẩm trong chương trình khuyến mãi theo param limit từ getPromotionProduct().
