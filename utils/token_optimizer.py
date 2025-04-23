@@ -1,11 +1,11 @@
 import tiktoken
 import openai
 import textwrap
-from config import MODEL_NAME, OPENAI_API_KEY
+from config import MODEL_NAME_4o_MINI, OPENAI_API_KEY
 
 
 class TokenOptimizer:
-    def __init__(self, model_name= MODEL_NAME):
+    def __init__(self, model_name= MODEL_NAME_4o_MINI):
         self.model_name = model_name
         openai.api_key = OPENAI_API_KEY
 

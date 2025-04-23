@@ -13,8 +13,6 @@ from website_cloner.website_rule.sapo_rule import SapoRule
 
 def main():
 
-    print("\n=== Website Cloner Tool ===")
-
     options = [
         'Crawl content của web',
         'Fill code logic theo từng trang',

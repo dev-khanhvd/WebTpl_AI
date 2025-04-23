@@ -10,25 +10,6 @@ class HomePage:
         self.template_mapping = json.loads(PAGE_TYPE_MAPPING)
         self.file_path = self.base_dir + '\\' + self.template_mapping['homepage']
 
-        # Define banner slide home
-        self.main_banner_wrapper_patterns = [
-            'swiper-wrapper',
-        ]
-        self.main_banner_item_keywords = [
-            'home-slider-item',
-            'swiper-slide',
-        ]
-
-        # Define product home
-        self.main_product_wrapper_patterns = [
-            'home-product-list',
-            'home-product-list-wrapper',
-            'home-product-list-slider'
-        ]
-        self.main_product_item_keywords = [
-            'product-item',
-        ]
-
     def menu_agent(self):
 
         while True:
@@ -168,16 +149,10 @@ class HomePage:
 
     def detect_block_promotion(self, template_content, main_wrapper, product_wrapper, question):
         detect = DetectHtml(self.base_dir)
-        section_header = detect.detect_position_home_promotion_section(main_wrapper, product_wrapper, template_content,
+        promotion_block = detect.detect_position_home_promotion_section(main_wrapper, product_wrapper, template_content,
                                                                        question, 'home_promotion_details')
-        if section_header:
-            if section_header.get('list_product'):
-                question = "Sản phẩm trong chương trình khuyến mãi"
-                result_promotion = detect.detect_position_home_promotion_products(product_wrapper,
-                                                                                  section_header.get('list_product'),
-                                                                                  section_header.get('htmp_soup'),
-                                                                                  question,
-                                                                                  'home_products_promotion_details')
-                if result_promotion:
-                    object_file = FolderManager(self.base_dir)
-                    object_file.save_file(self.file_path, result_promotion)
+        if promotion_block:
+            object_file = FolderManager(self.base_dir)
+            object_file.save_file(self.file_path, promotion_block)
+
+

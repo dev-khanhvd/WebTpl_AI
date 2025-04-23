@@ -211,8 +211,11 @@ class PageManager(scrapy.Spider):
             "order_checkout": "translate('Thanh toán')",
             "order_search": "translate('Tra cứu đơn hàng')",
             "blog_index": "translate('Danh sách bài viết')",
-            "blog": "category.name",
+            "blog": "newsCategory.name",
             "blog_article": "news.title | striptags",
+            "album_index": "translate('Danh sách album')",
+            "album": "albumCategory.name",
+            "album_article": "album.name | striptags",
             "contact": "translate('Liên hệ')",
             "user_signin": "translate('Đăng nhập')",
             "user_signup": "translate('Đăng ký')",
@@ -223,18 +226,73 @@ class PageManager(scrapy.Spider):
             "landing_page": "Landing page",
         }
         page_title = page_titles.get(page_type, "Page type not recognized.")
-        if page_title == "Page type not recognized.":
-            return page_title
-
+        meta_keywords = "getKeyContentValue('META_KEYWORDS')"
+        meta_description = "getKeyContentValue('META_DESCRIPTION')"
+        meta_title = "getKeyContentValue('META_TITLE')"
+        url = canonical_link = "getCurrentUrl()"
+        image = 'getBusinessLogo()'
+        match page_type:
+            case "category":
+                page_title = "category.name"
+                meta_keywords = "category.metaKeywords?:category.name"
+                meta_description = "category.metaDescription?:category.name"
+                meta_title = "category.metaTitle?:category.name"
+                url = canonical_link = "category.canonicalLink"
+                image = 'category.imageUri',
+            case "product":
+                page_title = "product.name"
+                meta_keywords = "product.metaKeywords?:product.name",
+                meta_description = "product.metaDescription?:product.name"
+                meta_title = "product.metaTitle?:product.name"
+                url = canonical_link = "product.canonicalLink"
+                image = 'product.imageUri'
+            case "blog":
+                page_title = "newsCategory.name"
+                meta_keywords = "newsCategory.metaKeywords?:newsCategory.name"
+                meta_description = "newsCategory.metaDescription?:newsCategory.name"
+                meta_title = "newsCategory.metaTitle?:newsCategory.name"
+                url = canonical_link = "newsCategory.canonicalLink"
+                image = 'newsCategory.imgUri',
+            case "blog_article":
+                page_title = "news.title | striptags"
+                meta_keywords = "news.metaKeywords?:news.name"
+                meta_description = "news.metaDescription?:news.name"
+                meta_title = "news.metaTitle?:news.name"
+                url = canonical_link = "news.canonicalLink"
+                image = 'news.pictureUri'
+            case "album":
+                page_title = "albumCategory.name | striptags"
+                meta_keywords = "albumCategory.metaKeywords?:albumCategory.name"
+                meta_description = "albumCategory.metaDescription?:albumCategory.name"
+                meta_title = "albumCategory.metaTitle?:news.name"
+                url = canonical_link = "albumCategory.canonicalLink"
+                image = 'albumCategory.imgUri'
+            case "blog_article":
+                page_title = "album.name | striptags"
+                meta_keywords = "album.metaKeywords?:album.name"
+                meta_description = "album.metaDescription?:album.name"
+                meta_title = "album.metaTitle?:album.name"
+                url = canonical_link = "album.canonicalLink"
+                image = 'album.pictureUri'
+            case "promotion_list":
+                page_title = "promotion.name"
+                meta_keywords = "promotion.metaKeywords?:promotion.name"
+                meta_description = "promotion.metaDescription?:promotion.name"
+                meta_title = "promotion.metaTitle?:promotion.name"
+                url = canonical_link = "promotion.canonicalLink"
+                image = 'promotion.imageUri'
+            case _:
+                return "Page type not recognized."
         return (
                 "{%extends \"layout/layout\" %}\n"
                 "{%block meta %}\n"
                 "    {{ headTitle(" + page_title + ").setSeparator(' - ').setAutoEscape(false)|raw }}\n"
-                "    <meta name=\"keywords\" content=\"{{ getKeyContentValue('META_KEYWORDS') }}\">\n"
-                "    <meta name=\"description\" content=\"{{ getKeyContentValue('META_DESCRIPTION') }}\">\n"
-                "    <meta property=\"og:title\" content=\"{{ getKeyContentValue('META_TITLE') }}\">\n"
-                "    <meta property=\"og:url\" content=\"{{ getCurrentUrl() }}\">\n"
-                "    <meta property=\"og:image\" content=\"{{ getBusinessLogo() }}\">\n"
+                "    <meta name=\"keywords\" content=\"{{ "+meta_keywords+" }}\">\n"
+                "    <meta name=\"description\" content=\"{{ "+meta_description+" }}\">\n"
+                "    <meta property=\"og:title\" content=\"{{ "+meta_title+" }}\">\n"
+                "    <meta property=\"og:url\" content=\"{{ "+url+" }}\">\n"
+                "    <meta property=\"og:image\" content=\"{{ "+image+" }}\">\n"
+                "    <link rel=\"canonical\" href=\"{{ "+canonical_link+" }}\">\n"
                 "{%endblock %}\n"
                 "\n"
                 "{%block body %}\n"

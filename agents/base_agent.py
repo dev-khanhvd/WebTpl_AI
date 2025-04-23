@@ -1,7 +1,7 @@
 import platform
 import subprocess
 
-
+from agents.category_page import CategoryPage
 from agents.home_page import HomePage
 from agents.menu_part import MenuPart
 
@@ -12,8 +12,8 @@ class BaseAgent:
         print("\n=== Menu xử lý fill logic website ===")
         options = [
             'Trang chủ',
-            'Menu trang chủ',
             'Danh mục sản phẩm',
+            'Menu trang chủ',
             'Chi tiết sản phẩm',
             'Giỏ hàng',
             'Thanh toán',
@@ -42,10 +42,12 @@ class BaseAgent:
                 home_page.menu_agent()
                 break
             elif menu_choice == 2:
-                menu_part = MenuPart(self.base_dir)
-                menu_part.load_menu()
+                home_page = CategoryPage(self.base_dir)
+                home_page.menu_agent()
                 continue
             elif menu_choice == 3:
+                menu_part = MenuPart(self.base_dir)
+                menu_part.load_menu()
                 continue
             elif menu_choice == 4:
                 continue
@@ -56,19 +58,6 @@ class BaseAgent:
             else:
                 break
 
-    # def ai_processing(self, user_question):
-    #     model_path = "C:/Users/phogu/AppData/Local/nomic.ai/GPT4All/deepseek-coder-6.7b-base.Q4_0.gguf"
-    #     llm = Llama(
-    #         model_path=model_path,
-    #         n_ctx=4096,  # Context size
-    #         n_gpu_layers=32  # Adjust based on your GPU capability
-    #     )
-    #
-    #     input_text = "#write a quick sort algorithm"
-    #     output = llm(input_text, max_tokens=500)
-    #
-    #     # Print the generated text
-    #     print(output['choices'][0]['text'])
 
     def clear_screen(self):
         """Clear the terminal screen based on the operating system."""

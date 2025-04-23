@@ -106,11 +106,11 @@ Dưới đây là cách thức lấy sản phẩm được tick của website:
 * Cách làm:
   * B1. Lấy tối đa sản phẩm tick theo param limit từ searchProducts().
   * B2. Nếu có param showHot,showHome, showNew thì thêm param này vào searchProducts().
-  * B2. Kiểm tra có dữ liệu không (if homeProduct is not empty)
-  * B3. Vòng lặp hiển thị sản phẩm: ảnh, tên, giá, đánh giá, nút hành động
-  * B4. Nếu có giảm giá, hiển thị phần trăm giảm giá
-  * B5. Nút hành động: thêm vào giỏ, yêu thích, xem nhanh (Thêm thuộc tính data-id="{{ np.id }}")
-  * B6. Hiển thị giá theo điều kiện (liên hệ, giảm giá, giá gốc)
+  * B3. Kiểm tra có dữ liệu không (if homeProduct is not empty)
+  * B4. Vòng lặp hiển thị sản phẩm: ảnh, tên, giá, đánh giá, nút hành động
+  * B5. Nếu có giảm giá, hiển thị phần trăm giảm giá
+  * B6. Nút hành động: thêm vào giỏ, yêu thích, xem nhanh (Thêm thuộc tính data-id="{{ np.id }}")
+  * B7. Hiển thị giá theo điều kiện (liên hệ, giảm giá, giá gốc)
 
 ```
 {% raw %}
@@ -153,12 +153,17 @@ Dưới đây là cách thức lấy chương trình khuyến mãi và sản ph�
 * Cách làm:
   * B1. Lấy giá trị promotionId từ getKeyContentValue('PROMOTION_ID')
   * B2. Kiểm tra nếu tồn tại promotionId (if promotionId is not null)
-  * B3. Lấy danh sách promotion tương ứng với promotionId từ hàm getPromotions()
-  * B4. Kiểm tra nếu tồn tại danh sách promotion(if promotion is not empty)
-  * B5. Gán phần tử đầu tiên của promotion cho biến promotionObj
-  * B6. Hiển thị các thông tin của promotion: Tên,Link xem chi tiết,Ảnh banner,Ngày bắt đầu,Ngày kết thúc
+  * B3. Lấy danh sách promotion theo promotionId từ hàm getPromotions()
+  * B4. Kiểm tra nếu danh sách promotion (if promotion is not empty)
+  * B5. Gán phần tử đầu tiên của promotion vào biến promotionObj
+  * B6. Hiển thị thông tin chương trình khuyến mãi: {{ promotionObj.name }},{{ promotionObj.viewLink }},{{ promotionObj.bannerUri }},{{ promotionObj.startDate }},{{ promotionObj.endDate }}
   * B7. Cung cấp nút "Xem tất cả" để link promotionObj.viewLink
-  
+  * B8. Lấy tối đa sản phẩm trong chương trình khuyến mãi theo param limit từ getPromotionProduct().
+  * B9. Kiểm tra có dữ liệu không (if promotionProduct is not empty)
+  * B10. Duyệt từng sản phẩm trong danh sách: ảnh, tên, giá, đánh giá, nút hành động
+  * B11. Nếu có giảm giá, hiển thị phần trăm giảm giá
+  * B12. Nút hành động: thêm vào giỏ, yêu thích, xem nhanh (Thêm thuộc tính data-id="{{ p.id }}")
+  * B13. Hiển thị giá theo điều kiện (liên hệ, giảm giá, giá gốc) 
 ```
 {% raw %}
 {% set promotionId = getKeyContentValue('PROMOTION_ID') | e('html') %}
@@ -171,47 +176,33 @@ Dưới đây là cách thức lấy chương trình khuyến mãi và sản ph�
         {{ promotionObj.bannerUri }}
         {{ promotionObj.startDate }}
         {{ promotionObj.endDate }}
+        {% set promotionProduct = getPromotionProduct({'id':promotionObj.id,'limit':12}) %}
+        {% if(promotionProduct is not empty) %}
+           {% for p in promotionProduct %}
+             {{ p.id }}
+             {{ p.thumbnailUri }}
+             {{ p.viewLink }}
+             {{ p.name }}
+             {% if(p.calcDiscountPercent > 0) %}
+                  {{ p.calcDiscountPercent }}%
+             {% endif %}   
+             {% if(p.contactPrice or (p.price == 0)) %}   
+                  Liên hệ
+             {% elseif p.priceAfterDiscount > 0 %}
+                  {{ p.priceAfterDiscount | number_format(0) }}₫
+                  {{ p.price | number_format(0) }}₫
+              {% elseif (p.oldPrice > 0) %}
+                  {{ p.price | number_format(0) }}₫
+                  {{ p.oldPrice | number_format(0) }}₫
+              {% else %}
+                   {{ p.price | number_format(0) }}₫
+             {% endif %}
+          {% endfor %}        
+        % endif %}
     {% endif %}
 {% endif %}
 {% endraw %}
 ```
-### Sản phẩm trong CTKM
-Sau khi lấy được chương trình khuyến mãi, thì dưới đây là cách lấy ra sản phẩm trong chương trình khuyến mãi đó
-* Cách làm:
-  * B1. Lấy tối đa sản phẩm trong chương trình khuyến mãi theo param limit từ getPromotionProduct().
-  * B2. Kiểm tra có dữ liệu không (if promotionProduct is not empty)
-  * B3. Vòng lặp hiển thị sản phẩm: ảnh, tên, giá, đánh giá, nút hành động
-  * B4. Nếu có giảm giá, hiển thị phần trăm giảm giá
-  * B5. Nút hành động: thêm vào giỏ, yêu thích, xem nhanh (Thêm thuộc tính data-id="{{ np.id }}")
-  * B6. Hiển thị giá theo điều kiện (liên hệ, giảm giá, giá gốc)
-
-```
-{% raw %}
-{% set promotionProduct = getPromotionProduct({'id':promotionObj.id,'limit':12}) %}
-{% if(promotionProduct is not empty) %}
-   {% for p in promotionProduct %}
-     {{ p.id }}
-     {{ p.thumbnailUri }}
-     {{ p.viewLink }}
-     {{ p.name }}
-     {% if(p.calcDiscountPercent > 0) %}
-          {{ p.calcDiscountPercent }}%
-     {% endif %}   
-     {% if(p.contactPrice or (p.price == 0)) %}   
-          Liên hệ
-     {% elseif p.priceAfterDiscount > 0 %}
-          {{ p.priceAfterDiscount | number_format(0) }}₫
-          {{ p.price | number_format(0) }}₫
-      {% elseif (p.oldPrice > 0) %}
-          {{ p.price | number_format(0) }}₫
-          {{ p.oldPrice | number_format(0) }}₫
-      {% else %}
-           {{ p.price | number_format(0) }}₫
-     {% endif %}
-  {% endfor %}        
-% endif %}
-{% endraw %}
-``` 
 
 ### Tạo nút yêu thích cho sản phẩm
 

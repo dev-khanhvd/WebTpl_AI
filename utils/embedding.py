@@ -3,7 +3,7 @@ import uuid
 import re
 import os
 
-from config import MODEL_NAME, MAX_TOKEN, OPENAI_API_KEY, TEMPERATURE
+from config import MODEL_NAME_4o_MINI, MODEL_NAME_4o, MAX_TOKEN, OPENAI_API_KEY, TEMPERATURE
 from vector_db.elastic_search_db import ElasticsearchDB
 from openai import OpenAI
 from utils.token_optimizer import TokenOptimizer
@@ -49,6 +49,8 @@ class Embedding:
             for section in sections:
                 if not section['title'] or not section['description']:
                     continue
+
+                section['description'] = section['description'].replace('```', '')
 
                 # Create metadata
                 metadata = {
@@ -201,10 +203,13 @@ class Embedding:
             "home_product_category": "danh mục sản phẩm",
             "home_menu_product_category": "menu danh mục sản phẩm",
             "home_promotion_details": "chương trình khuyến mãi",
-            "home_products_promotion_details": "sản phẩm trong chương trình khuyến mãi",
             "home_article_news": "bài viết tin tức",
             "home_brands": "thương hiệu",
-            "home_album": "album"
+            "category_filter_block": "bộ lọc danh mục",
+            "attributes_filter_block": "bộ lọc thuộc tính",
+            "price_filter_block": "bộ lọc giá",
+            "brand_filter_block": "bộ lọc thương hiệu theo danh mục",
+            "category_products_list_block": "danh sách sản phẩm"
         }
         text = type_map.get(type, "nội dung")
 
@@ -228,14 +233,18 @@ class Embedding:
                   Sử dụng twig với mã logic ở trên, không thay đổi mã html """
         print("Processing, please wait a moment!")
 
-        optimizer = TokenOptimizer()
+        model_name = MODEL_NAME_4o_MINI
+        if  type_map.get(type) in ('chương trình khuyến mãi','bộ lọc thuộc tính'):
+            model_name = MODEL_NAME_4o
+
+        optimizer = TokenOptimizer(model_name)
         prompt = optimizer.optimize_prompt(prompt)
         if optimizer.count_tokens(prompt) > MAX_TOKEN:
             prompt = optimizer.truncate_text(prompt, MAX_TOKEN)
 
         print(prompt)
         completion = self.client.chat.completions.create(
-            model= MODEL_NAME,
+            model= model_name,
             store=True,
             max_tokens=MAX_TOKEN,
             temperature=TEMPERATURE,
