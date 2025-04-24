@@ -399,3 +399,33 @@ Dưới đây là cách thức lấy bài viết tin tức trên website:
 
 <figure><img src="../.gitbook/assets/image (30).png" alt=""><figcaption><p>Tin tức</p></figcaption></figure>
 
+### Danh sách mã voucher
+
+Lấy ra danh sách các mã coupon theo các chương trình coupon đã cài đặt trong hệ thống. Tối đa lấy đuợc 4 chương trình
+
+* Cách làm:
+  * B1. Lấy tối đa chương trình voucher theo param limit từ getListCoupon().
+  * B2. Kiểm tra có dữ liệu không (if couponLst is not empty)
+  * B3. Lặp qua từng voucher, hiển thị thông tin cơ bản của voucher
+  * B4. Kiểm tra voucher đó có danh sách coupon không
+  * B5. Lặp qua từng mã coupon trong voucher, hiển thị thông tin của coupon đó
+```
+{% raw %}
+{% set voucher = getListCoupon({'couponLimit':4}) %}
+{% if voucher is not empty  %}
+   {% for v in voucher %}
+      {{ v.id }}
+      {{ v.value|number_format(0) }}
+     {% if(v.couponCode is not empty) %}
+        {% for v_child in v.couponCode %}
+            {{ v_child.value }}
+            {{ v_child.description }}
+            {{ v.startDate }}
+            {{ v.endDate }}
+            {{ v_child.code }}
+        {% endfor %}
+     {% endif %}
+  {% endfor %}
+{% endif %}
+{% endraw %}
+```

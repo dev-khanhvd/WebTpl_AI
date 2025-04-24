@@ -23,6 +23,7 @@ class HomePage:
                 'Danh sách bài viết album',
                 'Danh thương hiệu',
                 'Danh mục sản phẩm',
+                'Danh sách mã voucher',
             ]
 
             for i, option in enumerate(options, 1):
@@ -92,13 +93,14 @@ class HomePage:
                 else:
                     wrapper_classes = [cls.strip() for cls in class_input.split(',')]
                     if len(wrapper_classes) > 0:
-                        number_limit = input(
-                            f"Nhập số lượng lấy ra cho '{selected_option}' : ").strip()
                         options = {}
-                        if number_limit.isdigit():
-                            options = {
-                                'limit': int(number_limit)
-                            }
+                        if menu_choice not in [1,9]:
+                            number_limit = input(
+                                f"Nhập số lượng lấy ra cho '{selected_option}' : ").strip()
+                            if number_limit.isdigit():
+                                options = {
+                                    'limit': int(number_limit)
+                                }
                         self.get_home_page_content(wrapper_classes, menu_choice, None, options)
                     else:
                         print('Nhập đủ ID(class) wrapper')
@@ -137,6 +139,10 @@ class HomePage:
                         question = 'Danh mục sản phẩm'
                         self.detect_block_fill_code(template_content, wrapper_classes, question,
                                                     'home_product_category')
+                    case 9:
+                        question = 'Danh sách mã voucher'
+                        self.detect_block_fill_code(template_content, wrapper_classes, question,
+                                                    'home_voucher_list')
                     case _:
                         print("Lựa chọn không hợp lệ!")
 

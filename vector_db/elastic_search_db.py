@@ -82,53 +82,38 @@ class ElasticsearchDB:
     def query(self, query_embedding, n_results=5):
         if not self.is_valid_vector(query_embedding):
             raise ValueError("Query embedding không hợp lệ hoặc không đúng chiều")
+        # script_query = {
+        #     "script_score": {
+        #         "query": {
+        #             "match_all": {}
+        #         },
+        #         "script": {
+        #             "source": "cosineSimilarity(params.query_vector, 'embedding') + 1.0",
+        #             "params": {
+        #                 "query_vector": query_embedding
+        #             }
+        #         }
+        #     }
+        # }
         script_query = {
-            "script_score": {
-                "query": {
-                    "match_all": {}
-                },
-                "script": {
-                    # Sửa cách truy cập trường vector trong document
-                    "source": "cosineSimilarity(params.query_vector, 'embedding') + 1.0",
-                    "params": {
-                        "query_vector": query_embedding
-                    }
-                }
+            "knn": {
+                "field": "embedding",
+                "query_vector": query_embedding,
+                "k": n_results,
+                "num_candidates": 100
             }
         }
         try:
             res = self.client.search(
                 index=self.index,
                 body={
-                    "size": n_results,
                     "query": script_query,
                     "_source": ["document", "metadata"]
                 }
             )
         except Exception as e:
-            # Thử phương pháp thay thế nếu phiên bản mới hơn
-            try:
-                alt_script_query = {
-                    "script_score": {
-                        "query": {"match_all": {}},
-                        "script": {
-                            "source": "cosineSimilarity(params.query_vector, doc['embedding'].value) + 1.0",
-                            "params": {"query_vector": query_embedding}
-                        }
-                    }
-                }
-
-                res = self.client.search(
-                    index=self.index,
-                    body={
-                        "size": n_results,
-                        "query": alt_script_query,
-                        "_source": ["document", "metadata"]
-                    }
-                )
-            except Exception as e2:
-                print(f"Both search attempts failed. Errors: \n1: {str(e)}\n2: {str(e2)}")
-                raise
+            print(f"KNN search failed: {str(e)}")
+            raise
 
         documents = []
         metadatas = []

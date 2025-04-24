@@ -205,11 +205,17 @@ class Embedding:
             "home_promotion_details": "chương trình khuyến mãi",
             "home_article_news": "bài viết tin tức",
             "home_brands": "thương hiệu",
+            "home_voucher_list": "danh sách mã voucher",
             "category_filter_block": "bộ lọc danh mục",
             "attributes_filter_block": "bộ lọc thuộc tính",
             "price_filter_block": "bộ lọc giá",
             "brand_filter_block": "bộ lọc thương hiệu theo danh mục",
-            "category_products_list_block": "danh sách sản phẩm"
+            "category_products_list_block": "danh sách sản phẩm",
+            "product_category_related_block": "sản phẩm cùng danh mục",
+            "product_upsale_block": "sản phẩm liên quan",
+            "product_history_block": "sản phẩm đã xem",
+            "product_images_block": "ảnh sản phẩm",
+            "product_attrs_block": "thuộc tính sản phẩm",
         }
         text = type_map.get(type, "nội dung")
 
@@ -243,21 +249,22 @@ class Embedding:
             prompt = optimizer.truncate_text(prompt, MAX_TOKEN)
 
         print(prompt)
-        completion = self.client.chat.completions.create(
-            model= model_name,
-            store=True,
-            max_tokens=MAX_TOKEN,
-            temperature=TEMPERATURE,
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"""{prompt}"""
-                }
-            ]
-        )
-        if completion:
-            object_completion_message = completion.choices[0].message
-            return {type: object_completion_message.content}
+        return None
+        # completion = self.client.chat.completions.create(
+        #     model= model_name,
+        #     store=True,
+        #     max_tokens=MAX_TOKEN,
+        #     temperature=TEMPERATURE,
+        #     messages=[
+        #         {
+        #             "role": "user",
+        #             "content": f"""{prompt}"""
+        #         }
+        #     ]
+        # )
+        # if completion:
+        #     object_completion_message = completion.choices[0].message
+        #     return {type: object_completion_message.content}
 
     def get_answer_with_details(self, question):
         if not question:
