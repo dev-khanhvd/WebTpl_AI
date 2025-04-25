@@ -17,8 +17,6 @@ def main():
         'Crawl content của web',
         'Fill code logic theo từng trang',
         'Cập nhật training data',
-        'Xóa training data',
-        'Xem training data',
     ]
 
     folder_url = ''
@@ -125,15 +123,6 @@ def main():
         elif menu_choice == 3:
             auto_embedding = Embedding(BASE_DIR)
             auto_embedding.save_embeddings()
-            continue
-        elif menu_choice == 4:
-            auto_embedding = Embedding(BASE_DIR)
-            auto_embedding.delete_embeddings()
-            continue
-        elif menu_choice == 5:
-            auto_embedding = Embedding(BASE_DIR)
-            test = auto_embedding.get_embeddings()
-            print(test)
             continue
         else:
             print("Lựa chọn không hợp lệ. Vui lòng thử lại!")

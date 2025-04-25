@@ -59,13 +59,6 @@ Tên sản phẩm sẽ được lấy ra như sau như sau:
 
 Giá sản phẩm thường sẽ bao gồm giá mới, giá cũ và số phần trăm giảm giá (nếu có) của sản phẩm và sẽ được gọi ra như sau:
 
-* Cách làm:
-  * B1. Kiểm tra và hiển thị giá
-  * B1.1. Nếu sản phẩm yêu cầu liên hệ để biết giá hoặc giá = 0 → hiển thị: Liên hệ.
-  * B1.2. Nếu có giá sau giảm (priceAfterDiscount > 0) → hiển thị:Giá sau giảm,Giá gốc
-  * B1.3. Nếu không có priceAfterDiscount nhưng có oldPrice → hiển thị:Giá hiện tại (price), Giá cũ (oldPrice)
-  * B2. Hiển thị phần trăm giảm nếu có
-  
 ```
 {% raw %}
     {% if(product.contactPrice or (product.price == 0)) %}
@@ -424,6 +417,35 @@ Lấy ra danh sách các đánh giá để hiển thị: Comment, số sao, ản
 ```
 {% raw %}
     render_embedRatingComment({'productId': product.id,'limit': 3 }
+{% endraw %}
+```
+
+<figure><img src="../../.gitbook/assets/image (54).png" alt=""><figcaption></figcaption></figure>
+
+### Lấy ra cửa hàng
+
+Lấy ra danh sách các cửa hàng đang còn hàng và hết hàng
+
+* Cách làm:
+  * B1. Kiểm tra depotInventories có dữ liệu không
+  * B2. Lặp qua từng phần tử trong depotInventories
+  * B3. Kiểm tra điều kiện cho mỗi phần tử inventory
+  * B4. Hiển thị tên và địa chỉ của cửa hàng
+  * B5. Hiển thị tồn theo từng cửa hàng
+```
+{% raw %}
+{% if depotInventories is not empty %}
+    {% for inventory in depotInventories %}
+         {% if inventory.options is defined and inventory.options.depotAddress is defined %}
+              {{ inventory.options.depotName }}
+              {{ inventory.options.depotAddress }}
+              {% set text = 'Hết hàng' %}
+              {% if inventory.available > 0 %}
+                   {% set text = 'Còn hàng' %}
+              {% endif %}
+         {% endif %}
+    {% endfor %}
+{% endif %}
 {% endraw %}
 ```
 

@@ -231,6 +231,7 @@ class PageManager(scrapy.Spider):
         meta_title = "getKeyContentValue('META_TITLE')"
         url = canonical_link = "getCurrentUrl()"
         image = 'getBusinessLogo()'
+        variable = ''
         match page_type:
             case "category":
                 page_title = "category.name"
@@ -246,6 +247,15 @@ class PageManager(scrapy.Spider):
                 meta_title = "product.metaTitle?:product.name"
                 url = canonical_link = "product.canonicalLink"
                 image = 'product.imageUri'
+                variable = '''  {% set wishlist = jsonDecode(getCookies('WISHLIST_STORE_PRODUCT')) %}
+                                {% set ivt = 0 %}
+                                {% if product.inventory().calcAvailable() > 0 %}
+                                    {% set ivt = product.inventory().calcAvailable() %}
+                                {% elseif product.available > 0 %}
+                                    {% set ivt = product.available %}
+                                {% endif %}
+                                {% set variableAttributes = product.variableAttributes %}
+                                {% set flag = 0 %}'''
             case "blog":
                 page_title = "newsCategory.name"
                 meta_keywords = "newsCategory.metaKeywords?:newsCategory.name"
@@ -296,7 +306,7 @@ class PageManager(scrapy.Spider):
                 "{%endblock %}\n"
                 "\n"
                 "{%block body %}\n"
-                + str(content.prettify()) + "\n"
+                + str(variable) + "\n" + str(content.prettify()) + "\n"
                 "{%endblock %}\n"
 
         ).strip()

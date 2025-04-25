@@ -215,6 +215,7 @@ class Embedding:
             "product_upsale_block": "sản phẩm liên quan",
             "product_history_block": "sản phẩm đã xem",
             "product_images_block": "ảnh sản phẩm",
+            "product_price_block": "giá sản phẩm",
             "product_attrs_block": "thuộc tính sản phẩm",
         }
         text = type_map.get(type, "nội dung")
@@ -249,22 +250,21 @@ class Embedding:
             prompt = optimizer.truncate_text(prompt, MAX_TOKEN)
 
         print(prompt)
-        return None
-        # completion = self.client.chat.completions.create(
-        #     model= model_name,
-        #     store=True,
-        #     max_tokens=MAX_TOKEN,
-        #     temperature=TEMPERATURE,
-        #     messages=[
-        #         {
-        #             "role": "user",
-        #             "content": f"""{prompt}"""
-        #         }
-        #     ]
-        # )
-        # if completion:
-        #     object_completion_message = completion.choices[0].message
-        #     return {type: object_completion_message.content}
+        completion = self.client.chat.completions.create(
+            model= model_name,
+            store=True,
+            max_tokens=MAX_TOKEN,
+            temperature=TEMPERATURE,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""{prompt}"""
+                }
+            ]
+        )
+        if completion:
+            object_completion_message = completion.choices[0].message
+            return {type: object_completion_message.content}
 
     def get_answer_with_details(self, question):
         if not question:
