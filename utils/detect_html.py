@@ -6,7 +6,7 @@ class DetectHtml:
     def __init__(self, base_dir):
         self.base_dir = base_dir
 
-    def detect_position_html(self, wrapper_pattern, soup, question=None, type=None, options = None):
+    def detect_position_html(self, wrapper_pattern:str, soup, question=None, type=None, options = None):
 
         if not isinstance(soup, BeautifulSoup):
             soup = BeautifulSoup(soup, 'html.parser')
@@ -44,7 +44,7 @@ class DetectHtml:
                 return soup
 
         return None
-    def detect_position_home_promotion_section(self, main_wrapper, product_wrapper, soup, question=None, type=None):
+    def detect_position_home_promotion_section(self, main_wrapper:str, product_wrapper:str, soup, question=None, type=None):
         if not isinstance(soup, BeautifulSoup):
             soup = BeautifulSoup(soup, 'html.parser')
 
@@ -101,7 +101,7 @@ class DetectHtml:
                 promotion_section.append(section_prm)
                 return soup
         return None
-    def detect_position_product_attributes_section(self, main_wrapper, product_wrapper, soup, question=None, type=None):
+    def detect_position_product_attributes_section(self, main_wrapper:str, product_wrapper:str, soup, question=None, type=None):
         if not isinstance(soup, BeautifulSoup):
             soup = BeautifulSoup(soup, 'html.parser')
 

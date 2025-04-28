@@ -24,41 +24,9 @@ https://python.langchain.com/docs/how_to/installation/
 ## Embeddings & Vector Database  
     - Embeddings: Embeddings là một cách để chuyển đổi văn bản, hình ảnh thành một vector số (mảng số thực)  
     - Vector Database: DB được tối ưu hóa để lưu trữ và tìm kiếm embeddings dựa trên sự tương đồng
-
-## Cài đặt Chroma DB 
-    - pip install chromadb  
-    - Windows không hỗ trợ trực tiếp ChromaDB, cần sử dụng WSL (Windows Subsystem for Linux) hoặc MinGW. Nếu chưa có WSL, hãy bật nó bằng lệnh sau trong PowerShell (chạy với quyền Admin):  
-        wsl --install.
-
-    - Cài đặt xong, mở WSL bắt đầu cài lại ChromaDB (chroma-hnswlib)  
-        sudo apt update  
-        sudo apt install -y build-essential cmake python3-dev
-    - Nếu báo lỗi:  
-        - sudo not found:  
-            whoami (check xem có quyền root hay không)  
-            - Nếu trả về root, không cần sudo  
-                apt update  
-                apt install sudo -y  
-            - Nếu trả về một user khác, thì sudo thực sự bị thiếu => Cài đặt lại sudo  
-        - apt not found:  
-            - Kiểm tra lại hệ điều hành  
-                uname -a - cat /etc/os-release  
-            - Dùng Alpine Linux  
-                apk update 
-                apk add sudo  
-            - Dùng CentOS/RHEL  
-                yum update -y  
-                yum install sudo -y
-
-
-    - Sau khi hoàn thành, tiếp tục cài đặt ChromaDB
-    - Sau khi cài mà vẫn báo lỗi: Could not build wheels for hnswlib, which is required to install pyproject.toml-based projects  
-        - Cách fix issue: 
-            https://github.com/chroma-core/chroma/issues/189#issuecomment-1454418844
-
-    - Chạy lại 2 câu lệnh như ở dưới là done:  
-        pip install --no-cache-dir hnswlib  
-        pip install --q chromadb
+## Elastic DB
+    - https://www.docker.com/
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/zip-windows.html
 
 ## Cài đặt Scrapy: https://scrapy.org/
     pip install scrapy
@@ -66,15 +34,12 @@ https://python.langchain.com/docs/how_to/installation/
 ## Cài đặt BeautifulSoup: https://www.crummy.com/software/BeautifulSoup/bs4/doc/
         pip install requests beautifulsoup4
 
-
-## Hiện tại đang xử lý AI chạy trên local bằng con mistral_7b_0-3_oh-dcft-v3.1-claude-3-5-sonnet-20241022
-https://huggingface.co/tensorblock/mistral_7b_0-3_oh-dcft-v3.1-claude-3-5-sonnet-20241022-GGUF
-
-## Đang dùng GPT4ALL để xử lý training cho con AI này. Docs đọc ở đây
-https://github.com/nomic-ai/gpt4all
-https://docs.gpt4all.io/
+## Tạo server API, dùng fastAPI để xử lý: https://fastapi.tiangolo.com/, https://fastapi.tiangolo.com/vi/tutorial/
+    pip install fastapi uvicorn
 
 ## Xử lý embeddings + LLaMa để trainning cho AI
     // llama-cpp-python → Chạy mô hình LLaMA trên CPU/GPU
     // sentence-transformers → Tạo embeddings từ văn bản
     pip install llama-cpp-python sentence-transformers
+    
+    - Đang dùng all-mpnet-base-v2 để xử lý embedding 768 chiều

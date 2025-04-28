@@ -20,7 +20,7 @@ class MenuPart:
             if template_content:
                 self.extract_menu(template_content, menu_wrapper, file_path)
 
-    def extract_menu(self, html, wrapper_selector, file_path):
+    def extract_menu(self, html, wrapper_selector:str, file_path:str):
         potential_parents = []
         soup = BeautifulSoup(html, "html.parser")
         elements = soup.find_all(id=re.compile(wrapper_selector))

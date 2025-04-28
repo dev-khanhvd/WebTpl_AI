@@ -91,7 +91,7 @@ class Embedding:
 
         print(f"Đã lưu {len(self.collection.get()['ids'])} sections vào Elasticsearch")
 
-    def extract_sections(self,file_path):
+    def extract_sections(self,file_path:str):
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
 
@@ -173,7 +173,7 @@ class Embedding:
         all_items = self.collection.get()
         return json.dumps(all_items, indent=2)
 
-    def process_question(self, user_question, type = None, items = None, options = None):
+    def process_question(self, user_question:str, type = None, items = None, options = None):
         print(f"🔍 Processing question: {user_question}")
         best_match = self.get_answer_with_details(user_question)
         pattern = r"```(?:twig)?\n([\s\S]*?)```"
@@ -268,7 +268,7 @@ class Embedding:
         #     object_completion_message = completion.choices[0].message
         #     return {type: object_completion_message.content}
 
-    def get_answer_with_details(self, question):
+    def get_answer_with_details(self, question:str):
         if not question:
             return None
 
@@ -346,7 +346,7 @@ class Embedding:
 
         return answer_data
 
-    def extract_relevant_section(self, document, question):
+    def extract_relevant_section(self, document, question:str):
 
         headers = re.findall(r"(### .+)", document)
 

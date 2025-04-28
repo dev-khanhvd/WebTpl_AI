@@ -106,7 +106,7 @@ class HomePage:
                         print('Nhập đủ ID(class) wrapper')
                         continue
 
-    def get_home_page_content(self, wrapper_classes, choice_selected, item_classes=None, options=None):
+    def get_home_page_content(self, wrapper_classes:str, choice_selected:int, item_classes=None, options=None):
         if self.base_dir:
             with open(self.file_path, 'r', encoding='utf-8') as file:
                 template_content = file.read()
@@ -146,14 +146,14 @@ class HomePage:
                     case _:
                         print("Lựa chọn không hợp lệ!")
 
-    def detect_block_fill_code(self, template_content, wrapper_classes, question, type=None, options=None):
+    def detect_block_fill_code(self, template_content, wrapper_classes:str, question:str, type=None, options=None):
         detect = DetectHtml(self.base_dir)
         content_soup = detect.detect_position_html(wrapper_classes, template_content, question, type, options)
         if content_soup:
             object_file = FolderManager(self.base_dir)
             object_file.save_file(self.file_path, content_soup)
 
-    def detect_block_promotion(self, template_content, main_wrapper, product_wrapper, question):
+    def detect_block_promotion(self, template_content, main_wrapper:str, product_wrapper:str, question:str):
         detect = DetectHtml(self.base_dir)
         promotion_block = detect.detect_position_home_promotion_section(main_wrapper, product_wrapper, template_content,
                                                                        question, 'home_promotion_details')
