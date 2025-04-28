@@ -127,7 +127,7 @@ class DetectHtml:
                     items.extend(found)
 
                 if items:
-                    found_items = items[0].find_all("li", recursive=False)
+                    found_items = items[0].find_all("div", recursive=False)
                     main_attrs_wrp = items[0].parent
                     prd_wrapper = items[0]
                     break

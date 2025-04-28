@@ -78,9 +78,9 @@ Giá sản phẩm thường sẽ bao gồm giá mới, giá cũ và số phần 
 {% endraw %}
 ```
 
-### Thuộc tính sản phẩm
+### Thuộc tính màu sắc
 
-Thuộc tính của sản phẩm sẽ gồm 2 thuộc tính chính là màu và size, sẽ được gọi ra như sau:
+Lấy thuộc tính màu sắc của sản phẩm lên website
 
 * Cách làm:
   * B1. Lấy các thuộc tính từ sản phẩm (color, size...)
@@ -94,28 +94,17 @@ Thuộc tính của sản phẩm sẽ gồm 2 thuộc tính chính là màu và 
   * B3.1. Tạo mảng chứa giá trị màu đang lặp qua
   * B3.2. Gọi hàm getAttrValueImage để lấy ảnh tương ứng và danh sách id sản phẩm tương ứng với màu đó
   * B3.3. Hiển thị lựa chọn màu với ảnh và tên
-  * B4. Hiển thị chọn Kích cỡ (size)
-  * B4.1. Kiểm tra thuộc tính size (if size is not null or size is not empty)
-  * B4.2. Lấy danh sách các giá trị size và đếm số lượng.
-  * B5. Tạo vòng lặp hiển thị từng size
-  * B6. Nếu không có thuộc tính màu và size thì hiển thị dropdown chọn sản phẩm con
-  * B7. Nếu không có thuộc tính nào được hiển thị và có sản phẩm con thì tạo dropdown.
-  * B8. Tạo Vòng lặp sản phẩm con
-  * B8.1. Mỗi option chứa ID sản phẩm con, giá, và ảnh tương ứng
+  
 
 ```
 {% raw %}
-    {% set variableAttributes = product.variableAttributes %}
     {% set color = variableAttributes['color'] %}
-    {% set size = variableAttributes['size'] %}
-    {% set flag=0 %}
     {% if color is not null or color is not empty %}
         {% set valuesColor = color.childValues %}
         {% set numbC =  (valuesColor | length) %}
         {% if(valuesColor is not null and numbC>0) %}
             {% set flag = flag + 1 %}
             <div class="req _colorSelect" column="{{ color.column }}">
-              <span>Màu sắc</span>
               {% for attrValue in valuesColor %}
                  {% set arrColor = [] %}
                  {% set arrColor = arrColor|merge({ (color.column): attrValue.id }) %}
@@ -129,12 +118,26 @@ Thuộc tính của sản phẩm sẽ gồm 2 thuộc tính chính là màu và 
             </div>
         {% endif %}
     {% endif %}
+{% endraw %}
+```
+### Thuộc tính kích cỡ
+
+Lấy thuộc tính kích cỡ của sản phẩm lên website
+
+* Cách làm:
+  * B1. Hiển thị chọn Kích cỡ (size)
+  * B1.1. Kiểm tra thuộc tính size (if size is not null or size is not empty)
+  * B1.2. Lấy danh sách các giá trị size và đếm số lượng.
+  * B2. Tạo vòng lặp hiển thị từng size
+
+```
+{% raw %}
+    {% set size = variableAttributes['size'] %}
     {% if size is not empty %}
         {% set valuesSize = size.childValues %}
         {% set numbS = (valuesSize | length) %}
          {% if(valuesSize is not null and numbS>0) %}
              {% set flag = flag + 1 %}
-             <span>Kích cỡ</span>
              <div class="req _sizeSelect" data-column="{{ size.column }}">
                 {% for attrValueC in valuesSize %}
                       <a data-id="{{ attrValueC.id }}" class="{{ ((numbS == 1) ? 'active' : '') }}">
@@ -143,20 +146,6 @@ Thuộc tính của sản phẩm sẽ gồm 2 thuộc tính chính là màu và 
                 {% endfor %}
             </div>    
          {% endif %}
-    {% endif %}
-    {% if((flag==0) and (product.childs)) %}
-      {% set flagchilds= product.childs|length %}
-         <select class="childProducts">
-             <option value="1">Chọn sản phẩm</option>
-             {% set name_parent = product.name %}
-             {% for cp in product.childs %}
-                <option value="{{ cp.id }}, {{ cp.price }}"
-                       href="{{ cp.imageUri }}"
-                         data-src="{{ cp.imageUri }}">
-                    { cp.name|replace({ name_parent :''}) }}
-                </option>
-             {% endfor %}
-         </select>
     {% endif %}
 {% endraw %}
 ```
