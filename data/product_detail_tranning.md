@@ -80,8 +80,9 @@ Giá sản phẩm thường sẽ bao gồm giá mới, giá cũ và số phần 
 
 ### Thuộc tính màu sắc
 
-Lấy thuộc tính màu sắc của sản phẩm lên website
+Hiển thị các tùy chọn màu sắc của sản phẩm trên website, giúp người dùng dễ dàng lựa chọn màu yêu thích khi mua hàng.
 
+Dưới đây là cách thức lấy ra sắc của sản phẩm trên website:
 * Cách làm:
   * B1. Lấy các thuộc tính từ sản phẩm (color, size...)
   * B1.1. Biến flag dùng để xác định xem có thuộc tính nào được hiển thị không
@@ -122,7 +123,7 @@ Lấy thuộc tính màu sắc của sản phẩm lên website
 ```
 ### Thuộc tính kích cỡ
 
-Lấy thuộc tính kích cỡ của sản phẩm lên website
+Hiển thị các lựa chọn kích cỡ của sản phẩm trên website, giúp người dùng chọn đúng size phù hợp trước khi mua hàng.
 
 * Cách làm:
   * B1. Hiển thị chọn Kích cỡ (size)

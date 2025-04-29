@@ -6,7 +6,7 @@ class DetectHtml:
     def __init__(self, base_dir):
         self.base_dir = base_dir
 
-    def detect_position_html(self, wrapper_pattern:str, soup, question=None, type=None, options = None):
+    def detect_position_html(self, wrapper_pattern:str, soup, question=None, type=None, options = None, index_name=None):
 
         if not isinstance(soup, BeautifulSoup):
             soup = BeautifulSoup(soup, 'html.parser')
@@ -36,7 +36,7 @@ class DetectHtml:
 
             parent_wrapper.clear()
             embedings = Embedding(self.base_dir)
-            result = embedings.process_question(question, type, item, options)
+            result = embedings.process_question(question, type, item, options, index_name)
             if result:
                 twig_soup = BeautifulSoup(f"\n{result}\n", "html.parser")
                 parent_wrapper.append(twig_soup)

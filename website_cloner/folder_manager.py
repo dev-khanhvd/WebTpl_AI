@@ -3,30 +3,32 @@ import json
 from config import CONTENT_TEMPLATE_JSON
 import requests
 from urllib.parse import urlparse, urljoin
-
+import uuid
 
 class FolderManager:
     def __init__(self, base_dir):
         self.base_dir = base_dir
         self.content_template = json.loads(CONTENT_TEMPLATE_JSON)
 
-    def create_main_folder(self):
-        """Create the main project folder"""
-        while True:
-            create_folder_name = input("Nhập tên folder: ").strip().upper()
+    def create_main_folder(self, folder_name=None):
+        """
+        Create the main project folder
+        If folder_name is provided, use it; otherwise generate a unique name
+        """
+        if not folder_name:
+            # Generate a unique folder name if none provided
+            folder_name = f"PROJECT_{str(uuid.uuid4())[:8].upper()}"
 
-            if create_folder_name == "" or create_folder_name.lower() == "exit":
-                return None
+        folder_path = os.path.join(self.base_dir, folder_name.upper())
 
-            folder_path = os.path.join(self.base_dir, create_folder_name)
+        # Create folder if it doesn't exist
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+            print(f"Đã tạo folder {folder_name}.")
+        else:
+            print(f"Folder {folder_name} đã tồn tại.")
 
-            if os.path.exists(folder_path):
-                print(f"Folder {create_folder_name} đã tồn tại.")
-                return folder_path
-            else:
-                os.makedirs(folder_path)
-                print(f"Đã tạo folder {create_folder_name}.")
-                return folder_path
+        return folder_path
 
     def create_childs_folder(self, base_path, structure):
         """Create child folders and files based on template structure"""
@@ -76,12 +78,10 @@ class FolderManager:
                 if content:
                     flag_content = False
 
-
         return flag_content
 
-
-    def create_css_files(self ,output_folder, content):
-        save_path = output_folder + '\\css\\'
+    def create_css_files(self, output_folder, content):
+        save_path = os.path.join(output_folder, 'css')
         os.makedirs(save_path, exist_ok=True)
         css_links = [link.get("href") for link in content.find_all("link", rel="stylesheet") if link.get("href")]
         parsed_base_url = urlparse(self.base_dir)
@@ -91,7 +91,7 @@ class FolderManager:
 
         for css_link in css_links:
             if css_link.startswith("//"):
-                css_url = base_url+':' + css_link
+                css_url = base_url + ':' + css_link
             else:
                 css_url = urljoin(base_url, css_link)
             css_name = os.path.basename(urlparse(css_url).path)
@@ -106,7 +106,7 @@ class FolderManager:
             except requests.RequestException:
                 print(f"Lỗi tải CSS: {css_url}")
 
-    def save_file(self, file_path ,content):
+    def save_file(self, file_path, content):
         if content:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(str(content.prettify(formatter=None)))

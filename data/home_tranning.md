@@ -216,9 +216,11 @@ Dưới đây là cách thức lấy chương trình khuyến mãi và sản ph�
 
 <figure><img src="../.gitbook/assets/image (28).png" alt=""><figcaption><p>Nút yêu thích và thuộc tính màu sắc của sản phẩm</p></figcaption></figure>
 
-### Danh mục sản phẩm
+### Danh mục sản phẩm trang chủ
 
-Để người dùng có thể chuyển hướng đến các danh mục sản phẩm mình thích được nhanh chóng hơn.
+Ngay trên trang chủ, người dùng có thể nhìn thấy và truy cập nhanh vào các danh mục sản phẩm nổi bật.
+Mục tiêu: Giúp người dùng dễ dàng chọn đúng nhóm sản phẩm họ quan tâm chỉ với một cú nhấp chuột.
+
 Dưới đây là cách thức lấy danh mục sản phẩm của website:
 * Cách làm:
   * B1. Lấy danh mục từ hàm getCategories().
@@ -252,7 +254,10 @@ Dưới đây là cách thức lấy danh mục sản phẩm của website:
 <figure><img src="../.gitbook/assets/image (24).png" alt=""><figcaption><p>Ảnh đại diện danh mục sản phẩm</p></figcaption></figure>
 
 ### Danh mục tự tạo
-Người dùng có thể tự tạo danh mục cho riêng menu website theo cách của mình 
+
+Người dùng có thể tự tạo và sắp xếp các danh mục cho menu website theo ý muốn, thay vì phải sử dụng các danh mục mặc định.
+Điều này giúp bạn dễ dàng tổ chức nội dung theo cách riêng, phù hợp với nhu cầu và cấu trúc website của mình.
+
 Dưới đây là cách thức lấy danh mục tự tạo của website:
 
 * Cách làm:
@@ -308,7 +313,9 @@ Dưới đây là cách thức lấy danh mục tự tạo của website:
 {% endraw %}
 ```
 ### Thương hiệu
-Là nơi để hiển thị các thương hiệu mà doanh nghiệp bán
+Hiển thị danh sách các thương hiệu mà doanh nghiệp đang phân phối hoặc kinh doanh.
+Mỗi thương hiệu sẽ được trình bày với tên, logo và liên kết đến trang chi tiết.
+
 Dưới đây là cách thức lấy thương hiệu:
 * Cách làm:
   * B1. Lấy tối đa thương hiệu theo param limit từ loadListBrands().
@@ -329,11 +336,12 @@ Dưới đây là cách thức lấy thương hiệu:
     {% endif %}
 {% endraw %}
 ```
-### Bộ sưu tập
+### Bộ sưu tập album ảnh
 
-Là nơi để chuyển hướng nhanh đến bộ sưu tập sản phẩm mà người dùng yêu thích
+Khu vực này cho phép người dùng truy cập nhanh đến các bộ sưu tập ảnh yêu thích.
+Mỗi album có thể chứa nhiều ảnh và được trình bày với thông tin chi tiết.
 
-Dưới đây là cách thức lấy banner bộ sưu tập của website:
+Dưới đây là cách thức lấy ra danh sách bộ sưu tập của website:
  
 * Cách làm:
   * B1. Lấy tối đa album theo param limit từ searchAlbum().

@@ -18,33 +18,43 @@ class Embedding:
         )
         self.model = SentenceTransformer('all-mpnet-base-v2')
 
-        # Create ElasticsearchDB instance
-        es_db = ElasticsearchDB(base_dir=self.base_dir, index_name='data_training')
-
-        # Directly assign client and collection
-        self.collection = es_db
+        # We'll initialize collections dict to store multiple ES instances
+        self.collections = {}
 
     def save_embeddings(self):
         """
-        Save embeddings for markdown files in the specified directory
-        with support for different content types
+        Save embeddings for markdown files to separate indices in Elasticsearch,
+        using the filename (without extension) as the index name
         """
         # Ensure data directory exists
         if not os.path.exists(self.data):
             print(f"Data directory {self.data} does not exist.")
             return
 
-        # Track documents for batch processing
-        batch_size = 100
-        documents = []
-        metadatas = []
-        ids = []
+        total_sections = 0
+
+        # Process each markdown file separately
         for filename in os.listdir(self.data):
             if not filename.endswith('.md'):
                 continue
 
+            # Create index name from filename (without extension)
+            index_name = os.path.splitext(filename)[0].lower()
+
+            # Create a new ElasticsearchDB instance for this file
+            es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=index_name)
+            self.collections[index_name] = es_db
+
+            print(f"Processing file: {filename} -> index: {index_name}")
+
             file_path = os.path.join(self.data, filename)
             sections = self.extract_sections(file_path)
+
+            # Track documents for batch processing
+            batch_size = 100
+            documents = []
+            metadatas = []
+            ids = []
 
             for section in sections:
                 if not section['title'] or not section['description']:
@@ -66,32 +76,36 @@ class Embedding:
                 metadatas.append(metadata)
                 ids.append(str(uuid.uuid4()))
 
-                # Xử lý theo batch
+                # Process in batches
                 if len(documents) >= batch_size:
                     embeddings = self.model.encode(documents).tolist()
-                    self.collection.add(
+                    es_db.add(
                         embeddings=embeddings,
                         metadatas=metadatas,
                         ids=ids,
                         documents=documents
                     )
+                    total_sections += len(documents)
                     documents = []
                     metadatas = []
                     ids = []
 
-        # Process the final batch
-        if len(documents) > 0:
-            embeddings = self.model.encode(documents).tolist()
-            self.collection.add(
-                embeddings=embeddings,
-                metadatas=metadatas,
-                ids=ids,
-                documents=documents
-            )
+            # Process the final batch for this file
+            if len(documents) > 0:
+                embeddings = self.model.encode(documents).tolist()
+                es_db.add(
+                    embeddings=embeddings,
+                    metadatas=metadatas,
+                    ids=ids,
+                    documents=documents
+                )
+                total_sections += len(documents)
 
-        print(f"Đã lưu {len(self.collection.get()['ids'])} sections vào Elasticsearch")
+            print(f"✅ Added {len(sections)} sections to index '{index_name}'")
 
-    def extract_sections(self,file_path:str):
+        print(f"✅ Total: Saved {total_sections} sections across {len(self.collections)} indices in Elasticsearch")
+
+    def extract_sections(self, file_path: str):
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
 
@@ -165,26 +179,72 @@ class Embedding:
         return sections
 
     def delete_embeddings(self):
-        self.collection.delete_collection()
-        # self.collection.delete(ids=ids)
-        print("✅ Deleted all data in Elasticsearch.")
+        """Delete all indices created by this class"""
+        # Get all indices from Elasticsearch that match our pattern
+        # We'll use a simple approach - delete all indices that match the filenames in data directory
+        deleted_count = 0
+        for filename in os.listdir(self.data):
+            if not filename.endswith('.md'):
+                continue
 
-    def get_embeddings(self):
-        all_items = self.collection.get()
-        return json.dumps(all_items, indent=2)
+            index_name = os.path.splitext(filename)[0].lower()
+            try:
+                # Create a temporary ES instance for this index
+                es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=index_name)
+                es_db.delete_collection()
+                deleted_count += 1
+            except Exception as e:
+                print(f"Error deleting index {index_name}: {str(e)}")
 
-    def process_question(self, user_question:str, type = None, items = None, options = None):
+        print(f"✅ Deleted {deleted_count} indices from Elasticsearch.")
+        # Clear our collections dictionary
+        self.collections = {}
+
+    def get_embeddings(self, index_name=None):
+        """Get all embeddings, optionally from a specific index"""
+        if index_name:
+            # Get embeddings from a specific index
+            if index_name not in self.collections:
+                # Create temporary instance if needed
+                es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=index_name)
+            else:
+                es_db = self.collections[index_name]
+
+            all_items = es_db.get()
+            return json.dumps(all_items, indent=2)
+        else:
+            # Get embeddings from all indices
+            all_results = {}
+            for filename in os.listdir(self.data):
+                if not filename.endswith('.md'):
+                    continue
+
+                index_name = os.path.splitext(filename)[0].lower()
+                try:
+                    es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=index_name)
+                    all_results[index_name] = es_db.get()
+                except Exception as e:
+                    print(f"Error getting embeddings from {index_name}: {str(e)}")
+
+            return json.dumps(all_results, indent=2)
+
+    def process_question(self, user_question: str, type=None, items=None, options=None, index_name=None):
+        """
+        Process a question, optionally restricting to a specific index.
+        If index_name is None, search across all indices.
+        """
         print(f"🔍 Processing question: {user_question}")
-        best_match = self.get_answer_with_details(user_question)
+
+        best_match = self.get_answer_with_details(user_question, index_name)
         pattern = r"```(?:twig)?\n([\s\S]*?)```"
+
         if best_match:
             print(f"✅ The best answer has been found: {best_match['question']}")
-            generated_code = self.generate_code_with_llama(best_match,type ,items, options)
+            generated_code = self.generate_code_with_llama(best_match, type, items, options)
             content = re.search(pattern, generated_code[type])
             if content:
                 return content.group(1)
             return None
-
         else:
             print("❌ No matching logic found.")
             return {
@@ -192,8 +252,8 @@ class Embedding:
                 "message": "No matching logic found."
             }
 
-    def generate_code_with_llama(self, best_match = None, type = None, items = None, options = None):
-
+    def generate_code_with_llama(self, best_match=None, type=None, items=None, options=None):
+        # Existing implementation remains the same
         if options is None:
             options = {}
 
@@ -205,6 +265,7 @@ class Embedding:
             "home_promotion_details": "chương trình khuyến mãi",
             "home_article_news": "bài viết tin tức",
             "home_brands": "thương hiệu",
+            "home_album": "bộ sưu tập",
             "home_voucher_list": "danh sách mã voucher",
             "category_filter_block": "bộ lọc danh mục",
             "attributes_filter_block": "bộ lọc thuộc tính",
@@ -243,7 +304,7 @@ class Embedding:
         print("Processing, please wait a moment!")
 
         model_name = MODEL_NAME_4o_MINI
-        if  type_map.get(type) in ('chương trình khuyến mãi','bộ lọc thuộc tính'):
+        if type_map.get(type) in ('chương trình khuyến mãi', 'bộ lọc thuộc tính'):
             model_name = MODEL_NAME_4o
 
         optimizer = TokenOptimizer(model_name)
@@ -268,107 +329,129 @@ class Embedding:
         #     object_completion_message = completion.choices[0].message
         #     return {type: object_completion_message.content}
 
-    def get_answer_with_details(self, question:str):
+        # For demo purposes, return a placeholder response
+        return {type: "```twig\n<!-- Generated code would appear here -->\n```"}
+
+    def get_answer_with_details(self, question: str, index_name=None):
+        """
+        Get answer with details, optionally restricting to a specific index.
+        If index_name is provided, only search that index.
+        Otherwise, search all indices and return the best match.
+        """
         if not question:
             return None
 
-        # Check if collection is empty
-        if self.collection.count() == 0:
+        if index_name:
+            # Search in a specific index
+            indices = [index_name]
+        else:
+            # Search all indices derived from markdown files
+            indices = []
+            for filename in os.listdir(self.data):
+                if filename.endswith('.md'):
+                    indices.append(os.path.splitext(filename)[0].lower())
+
+        if not indices:
             return None
 
         query_embedding = self.model.encode(question).tolist()
+        best_result = None
+        best_score = -float('inf')
 
-        try:
-            results = self.collection.query(
-                query_embedding=query_embedding,
-                n_results=5
-            )
-        except Exception as e:
-            print(f"Query error: {str(e)}")
+        # Search each index and find the best match
+        for idx in indices:
+            try:
+                es_db = self.collections.get(idx)
+                if not es_db:
+                    es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=idx)
+                    self.collections[idx] = es_db
+
+                # Skip empty indices
+                if es_db.count() == 0:
+                    continue
+
+                results = es_db.query(
+                    query_embedding=query_embedding,
+                    n_results=5
+                )
+
+                # Extract top result from this index
+                if (not results.get("documents") or
+                        not results["documents"][0]):
+                    continue
+
+                matched_docs = results["documents"][0]
+                matched_metas = results["metadatas"][0]
+                matched_distances = results["distances"][0]
+
+                for i, doc in enumerate(matched_docs):
+                    relevant_section = self.extract_relevant_section(doc, question)
+                    if relevant_section:
+                        score = 1 - matched_distances[i]  # Convert distance to similarity score
+                        if score > best_score:
+                            best_score = score
+                            best_result = {
+                                "document": relevant_section,
+                                "metadata": matched_metas[i],
+                                "distance": matched_distances[i],
+                                "index": idx
+                            }
+            except Exception as e:
+                print(f"Error searching index {idx}: {str(e)}")
+                continue
+
+        # No relevant results found
+        if best_result is None:
+            print("❌ No relevant content found in any index!")
             return None
 
-        # Validate search results
-        if (not results.get("documents") or
-                not results["documents"][0]):
-            return None
-
-        # Extract top result
-        matched_docs = results["documents"][0]
-        matched_metas = results["metadatas"][0]
-        matched_distances = results["distances"][0]
-        selected_doc = None
-
-        for i, doc in enumerate(matched_docs):
-            relevant_section = self.extract_relevant_section(doc, question)
-            if relevant_section:
-                selected_doc = {
-                    "document": relevant_section,
-                    "metadata": matched_metas[i],
-                    "distance": matched_distances[i]
-                }
-                break
-
-        # Prepare answer data with fallback values
-        if selected_doc is None:
-            print("❌ Không tìm thấy phần nội dung phù hợp!")
-            return None
-
-        metadata = selected_doc["metadata"]
+        # Prepare answer data
+        metadata = best_result["metadata"]
         answer_data = {
             "question": question,
-            "answer": metadata.get("answer", selected_doc["document"]),
-            "relevance_score": 1 - selected_doc["distance"],
+            "answer": metadata.get("answer", best_result["document"]),
+            "relevance_score": 1 - best_result["distance"],
             "metadata": {
                 "example": metadata.get("example", ""),
                 "source": metadata.get("source", "Unknown"),
                 "title": metadata.get("title", ""),
-                "type": metadata.get("type", "")
+                "type": metadata.get("type", ""),
+                "index": best_result["index"]
             }
         }
-        # Parse additional optional fields with robust error handling
+
+        # Parse additional optional fields
         try:
-            # Parse logic if available
             answer_data["logic"] = json.loads(metadata.get("logic", "[]"))
         except (json.JSONDecodeError, TypeError):
             answer_data["logic"] = []
-        # Add example if available
+
         answer_data["example"] = metadata.get("example", "")
         answer_data["guide"] = metadata.get("guide", "")
 
-        # Modify add_training_data to handle simple data types
-        # if answer_data:
-        #     training_data = {
-        #         "question": answer_data["question"],
-        #         "answer": answer_data["answer"],
-        #         "source": answer_data["metadata"].get("source", "Unknown")
-        #     }
-        #     self.add_training_data(question, training_data)
-
         return answer_data
 
-    def extract_relevant_section(self, document, question:str):
-
+    def extract_relevant_section(self, document, question: str):
         headers = re.findall(r"(### .+)", document)
 
         if not headers:
             return document
 
-        # Tìm tiêu đề phù hợp nhất
+        # Find most relevant header
         best_header = None
         for header in headers:
             if any(word in header.lower() for word in question.lower().split()):
                 best_header = header
                 break
 
-        # Nếu không tìm thấy tiêu đề phù hợp, trả về toàn bộ nội dung
+        # If no suitable header found, return entire content
         if not best_header:
             return document
 
-        # Cắt nội dung từ tiêu đề đã tìm được
+        # Extract content from matching header
         sections = document.split(best_header)
         if len(sections) < 2:
-            return document  # Nếu không chia được, trả về toàn bộ
+            return document
 
-
-        relevant_section = sections[1].split("### ")[0]  # Lấy phần trước tiêu đề tiếp theo
+        relevant_section = sections[1].split("### ")[0]  # Get content before next header
         return f"{best_header}\n{relevant_section}"

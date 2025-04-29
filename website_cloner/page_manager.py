@@ -1,9 +1,10 @@
-import scrapy
-from scrapy.crawler import CrawlerProcess
+from fastapi import BackgroundTasks
 from urllib.parse import urlparse, urljoin
 import os
 import json
 import re
+import aiohttp
+import asyncio
 from bs4 import BeautifulSoup
 import logging
 from config import PAGE_TYPE_MAPPING
@@ -13,16 +14,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class PageManager(scrapy.Spider):
-    name = 'page_manager'
-
-    def __init__(self, base_url, output_folder, page_rules, *args, **kwargs):
-
-        super(PageManager, self).__init__(*args, **kwargs)
+class PageManager:
+    def __init__(self, base_url, output_folder, page_rules):
         # Ensure base URL has protocol
         if not base_url.startswith(('http://', 'https://')):
             base_url = 'https://' + base_url
-        self.start_urls = [base_url]
+
         self.base_url = base_url
         self.output_folder = output_folder
         self.visited_urls = set()
@@ -34,12 +31,55 @@ class PageManager(scrapy.Spider):
             'pages': {}
         }
 
-    def parse(self, response):
-        # Process current page
-        self.identify_and_process_page(response)
+    async def fetch_page(self, session, url):
+        try:
+            async with session.get(url, ssl=False, timeout=30) as response:
+                if response.status == 200:
+                    return await response.text()
+                else:
+                    logger.warning(f"Failed to fetch {url}: Status {response.status}")
+                    return None
+        except Exception as e:
+            logger.error(f"Error fetching {url}: {str(e)}")
+            return None
+
+    async def process_page(self, session, url):
+        # Skip if already visited
+        if url in self.visited_urls:
+            return
+
+        self.visited_urls.add(url)
+
+        # Fetch page content
+        content = await self.fetch_page(session, url)
+        if not content:
+            return
+
+        # Process the page
+        path = urlparse(url).path
+        page_type_found = False
+
+        # Identify page type based on URL pattern
+        for page_type, info in self.page_types.items():
+            if 'pattern' in info and re.match(info['pattern'], path):
+                self.extract_and_save_page_content(content, page_type, url)
+                page_type_found = True
+                info['found'] = True
+
+        # Check if homepage
+        if not page_type_found and not self.page_types['homepage']['found'] and (path == '/' or path == ''):
+            self.extract_and_save_page_content(content, 'homepage', url)
+            self.page_types['homepage']['found'] = True
+            page_type_found = True
+
+        # Extract layout components from every page
+        soup = BeautifulSoup(content, 'html.parser')
+        self.extract_layout_components(soup)
 
         # Find links to other pages
-        links = response.css("a::attr(href)").getall()
+        links = self.find_links(soup, url)
+        tasks = []
+
         for link in links:
             # Skip invalid links
             if not link or link.startswith(('#', 'javascript:', 'data:', 'mailto:', 'tel:')):
@@ -61,43 +101,27 @@ class PageManager(scrapy.Spider):
 
             # Get the path for pattern matching
             path = parsed_link.path
-
-            # Check against each page type pattern
             for page_type, info in self.page_types.items():
                 if 'pattern' in info and not info['found'] and re.match(info['pattern'], path):
-                    info['found'] = True
-                    self.visited_urls.add(link)
-                    yield scrapy.Request(link, callback=self.parse_specific_page, cb_kwargs={'page_type': page_type})
+                    tasks.append(self.process_page(session, link))
+                    break
 
-            # Add to general crawl queue if not already identified as a specific page type
-            if link not in self.visited_urls and len(self.visited_urls) < 30:  # Limit to avoid excessive crawling
-                self.visited_urls.add(link)
-                yield scrapy.Request(link, callback=self.parse)
+            # Add to general crawl queue if not too many pages visited
+            if link not in self.visited_urls and len(self.visited_urls) < 30:
+                tasks.append(self.process_page(session, link))
 
-    def parse_specific_page(self, response, page_type):
-        """Process a specific page type"""
-        self.extract_and_save_page_content(response, page_type)
+        # Process found links
+        if tasks:
+            await asyncio.gather(*tasks)
 
-        # Also extract layout components (header, footer) from every page
-        self.extract_layout_components(response)
+    def find_links(self, soup, base_url):
+        """Extract links from HTML content"""
+        links = []
+        for a_tag in soup.find_all('a', href=True):
+            links.append(a_tag['href'])
+        return links
 
-    def identify_and_process_page(self, response):
-        """Identify page type based on URL pattern and process it"""
-        path = urlparse(response.url).path
-
-        for page_type, info in self.page_types.items():
-            if 'pattern' in info and re.match(info['pattern'], path):
-                self.extract_and_save_page_content(response, page_type)
-                return True
-
-        # If homepage and not yet found, check if this is the homepage
-        if not self.page_types['homepage']['found'] and (path == '/' or path == ''):
-            self.extract_and_save_page_content(response, 'homepage')
-            return True
-
-        return False
-
-    def extract_and_save_page_content(self, response, page_type):
+    def extract_and_save_page_content(self, content, page_type, url):
         """Extract content and save to appropriate file"""
         # Check if page type exists in mapping
         if page_type not in self.type_mapping:
@@ -142,7 +166,7 @@ class PageManager(scrapy.Spider):
             index_file_path = None
 
         # Extract content
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(content, 'html.parser')
 
         # Remove scripts and style for cleaner content
         for script in soup.find_all('script'):
@@ -175,7 +199,6 @@ class PageManager(scrapy.Spider):
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(formatted_content)
             logger.info(f"Saved content for {page_type}: {file_path}")
-
 
         # If it's a category or blog_category, also save to index file
         if index_file_path:
@@ -232,84 +255,84 @@ class PageManager(scrapy.Spider):
         url = canonical_link = "getCurrentUrl()"
         image = 'getBusinessLogo()'
         variable = ''
-        match page_type:
-            case "category":
-                page_title = "category.name"
-                meta_keywords = "category.metaKeywords?:category.name"
-                meta_description = "category.metaDescription?:category.name"
-                meta_title = "category.metaTitle?:category.name"
-                url = canonical_link = "category.canonicalLink"
-                image = 'category.imageUri',
-            case "product":
-                page_title = "product.name"
-                meta_keywords = "product.metaKeywords?:product.name",
-                meta_description = "product.metaDescription?:product.name"
-                meta_title = "product.metaTitle?:product.name"
-                url = canonical_link = "product.canonicalLink"
-                image = 'product.imageUri'
-                variable = '''  {% set wishlist = jsonDecode(getCookies('WISHLIST_STORE_PRODUCT')) %}
-                                {% set ivt = 0 %}
-                                {% if product.inventory().calcAvailable() > 0 %}
-                                    {% set ivt = product.inventory().calcAvailable() %}
-                                {% elseif product.available > 0 %}
-                                    {% set ivt = product.available %}
-                                {% endif %}
-                                {% set variableAttributes = product.variableAttributes %}
-                                {% set flag = 0 %}'''
-            case "blog":
-                page_title = "newsCategory.name"
-                meta_keywords = "newsCategory.metaKeywords?:newsCategory.name"
-                meta_description = "newsCategory.metaDescription?:newsCategory.name"
-                meta_title = "newsCategory.metaTitle?:newsCategory.name"
-                url = canonical_link = "newsCategory.canonicalLink"
-                image = 'newsCategory.imgUri',
-            case "blog_article":
-                page_title = "news.title | striptags"
-                meta_keywords = "news.metaKeywords?:news.name"
-                meta_description = "news.metaDescription?:news.name"
-                meta_title = "news.metaTitle?:news.name"
-                url = canonical_link = "news.canonicalLink"
-                image = 'news.pictureUri'
-            case "album":
-                page_title = "albumCategory.name | striptags"
-                meta_keywords = "albumCategory.metaKeywords?:albumCategory.name"
-                meta_description = "albumCategory.metaDescription?:albumCategory.name"
-                meta_title = "albumCategory.metaTitle?:news.name"
-                url = canonical_link = "albumCategory.canonicalLink"
-                image = 'albumCategory.imgUri'
-            case "blog_article":
-                page_title = "album.name | striptags"
-                meta_keywords = "album.metaKeywords?:album.name"
-                meta_description = "album.metaDescription?:album.name"
-                meta_title = "album.metaTitle?:album.name"
-                url = canonical_link = "album.canonicalLink"
-                image = 'album.pictureUri'
-            case "promotion_list":
-                page_title = "promotion.name"
-                meta_keywords = "promotion.metaKeywords?:promotion.name"
-                meta_description = "promotion.metaDescription?:promotion.name"
-                meta_title = "promotion.metaTitle?:promotion.name"
-                url = canonical_link = "promotion.canonicalLink"
-                image = 'promotion.imageUri'
-            case _:
-                return "Page type not recognized."
+
+        # Fix the tuple to string conversion issues
+        if page_type == "category":
+            page_title = "category.name"
+            meta_keywords = "category.metaKeywords?:category.name"
+            meta_description = "category.metaDescription?:category.name"
+            meta_title = "category.metaTitle?:category.name"
+            url = canonical_link = "category.canonicalLink"
+            image = 'category.imageUri'  # Remove the comma that created a tuple
+        elif page_type == "product":
+            page_title = "product.name"
+            meta_keywords = "product.metaKeywords?:product.name"  # Remove the comma
+            meta_description = "product.metaDescription?:product.name"  # Remove the comma
+            meta_title = "product.metaTitle?:product.name"  # Remove the comma
+            url = canonical_link = "product.canonicalLink"
+            image = 'product.imageUri'
+            variable = '''  {% set wishlist = jsonDecode(getCookies('WISHLIST_STORE_PRODUCT')) %}
+                            {% set ivt = 0 %}
+                            {% if product.inventory().calcAvailable() > 0 %}
+                                {% set ivt = product.inventory().calcAvailable() %}
+                            {% elseif product.available > 0 %}
+                                {% set ivt = product.available %}
+                            {% endif %}
+                            {% set variableAttributes = product.variableAttributes %}
+                            {% set flag = 0 %}'''
+        elif page_type == "blog":
+            page_title = "newsCategory.name"
+            meta_keywords = "newsCategory.metaKeywords?:newsCategory.name"
+            meta_description = "newsCategory.metaDescription?:newsCategory.name"
+            meta_title = "newsCategory.metaTitle?:newsCategory.name"
+            url = canonical_link = "newsCategory.canonicalLink"
+            image = 'newsCategory.imgUri'  # Remove the comma
+        elif page_type == "blog_article":
+            page_title = "news.title | striptags"
+            meta_keywords = "news.metaKeywords?:news.name"
+            meta_description = "news.metaDescription?:news.name"
+            meta_title = "news.metaTitle?:news.name"
+            url = canonical_link = "news.canonicalLink"
+            image = 'news.pictureUri'
+        elif page_type == "album":
+            page_title = "albumCategory.name | striptags"
+            meta_keywords = "albumCategory.metaKeywords?:albumCategory.name"
+            meta_description = "albumCategory.metaDescription?:albumCategory.name"
+            meta_title = "albumCategory.metaTitle?:news.name"
+            url = canonical_link = "albumCategory.canonicalLink"
+            image = 'albumCategory.imgUri'
+        elif page_type == "album_article":  # Fixed duplicate case from blog_article to album_article
+            page_title = "album.name | striptags"
+            meta_keywords = "album.metaKeywords?:album.name"
+            meta_description = "album.metaDescription?:album.name"
+            meta_title = "album.metaTitle?:album.name"
+            url = canonical_link = "album.canonicalLink"
+            image = 'album.pictureUri'
+        elif page_type == "promotion_list":
+            page_title = "promotion.name"
+            meta_keywords = "promotion.metaKeywords?:promotion.name"
+            meta_description = "promotion.metaDescription?:promotion.name"
+            meta_title = "promotion.metaTitle?:promotion.name"
+            url = canonical_link = "promotion.canonicalLink"
+            image = 'promotion.imageUri'
+        else:
+            pass  # Use defaults
+
         return (
                 "{%extends \"layout/layout\" %}\n"
                 "{%block meta %}\n"
                 "    {{ headTitle(" + page_title + ").setSeparator(' - ').setAutoEscape(false)|raw }}\n"
-                "    <meta name=\"keywords\" content=\"{{ "+meta_keywords+" }}\">\n"
-                "    <meta name=\"description\" content=\"{{ "+meta_description+" }}\">\n"
-                "    <meta property=\"og:title\" content=\"{{ "+meta_title+" }}\">\n"
-                "    <meta property=\"og:url\" content=\"{{ "+url+" }}\">\n"
-                "    <meta property=\"og:image\" content=\"{{ "+image+" }}\">\n"
-                "    <link rel=\"canonical\" href=\"{{ "+canonical_link+" }}\">\n"
+                "    <meta name=\"keywords\" content=\"{{ " + meta_keywords + " }}\">\n"
+                "    <meta name=\"description\" content=\"{{ " + meta_description + " }}\">\n"
+                "    <meta property=\"og:title\" content=\"{{ " + meta_title + " }}\">\n"                                                                                                                                                           
+                "    <meta property=\"og:url\" content=\"{{ " + url + " }}\">\n"
+                "    <meta property=\"og:image\" content=\"{{ " + image + " }}\">\n"
+                "    <link rel=\"canonical\" href=\"{{ " + canonical_link + " }}\">\n"
                 "{%endblock %}\n"
                 "\n"
                 "{%block body %}\n"
                 + str(variable) + "\n" + str(content.prettify()) + "\n"
-                "{%endblock %}\n"
-
-        ).strip()
+                 "{%endblock %}\n").strip()
 
     def layout_render_component(self):
         return ("""
@@ -342,10 +365,8 @@ class PageManager(scrapy.Spider):
                 </html>
              """).strip()
 
-    def extract_layout_components(self, response):
+    def extract_layout_components(self, soup):
         """Extract header and footer from page"""
-        soup = BeautifulSoup(response.text, 'html.parser')
-
         folder_manager = FolderManager(self.base_url)
         folder_manager.create_css_files(self.output_folder, soup)
 
@@ -382,29 +403,75 @@ class PageManager(scrapy.Spider):
                 'file': layout_path
             }
 
-def fetch_all_pages(url, output_folder, page_rules):
-    """Run Scrapy crawler to fetch all pages"""
-    process = CrawlerProcess(settings={
-        "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        "ROBOTSTXT_OBEY": False,
-        "DOWNLOAD_DELAY": 1,  # Be polite
-        "LOG_LEVEL": "INFO"
-    })
+
+async def fetch_all_pages(url, output_folder, page_rules):
+    """Run async crawler to fetch all pages"""
     try:
-        process.crawl(PageManager,
-                      base_url=url,
-                      output_folder=output_folder,
-                      page_rules=page_rules)
-        process.start()
+        page_manager = PageManager(
+            base_url=url,
+            output_folder=output_folder,
+            page_rules=page_rules
+        )
+
+        # Create client session with SSL verification disabled and timeout
+        connector = aiohttp.TCPConnector(ssl=False)
+        timeout = aiohttp.ClientTimeout(total=120)  # 2 minute timeout
+
+        async with aiohttp.ClientSession(
+                connector=connector,
+                timeout=timeout,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
+        ) as session:
+            # Start with the base URL
+            await page_manager.process_page(session, url)
+
+        return {
+            "status": "success",
+            "message": f"Website crawled: {url}",
+            "output_folder": output_folder
+        }
     except Exception as e:
-        print(f"ERROR: Exception during crawl: {e}")
+        logger.error(f"ERROR: Exception during crawl: {e}")
         import traceback
         traceback.print_exc()
+        return {
+            "status": "error",
+            "message": f"Error crawling website: {str(e)}",
+            "output_folder": output_folder
+        }
 
-    process.start()
 
-    return {
-        "status": "success",
-        "message": f"Website crawled: {url}",
-        "output_folder": output_folder
-    }
+def start_crawl_task(background_tasks: BackgroundTasks, job_id: str, url: str, folder_path: str, page_rules: dict,
+                     active_jobs: dict):
+    """Start the crawling process in a background task"""
+    background_tasks.add_task(
+        crawl_website_task,
+        job_id=job_id,
+        url=url,
+        folder_path=folder_path,
+        page_rules=page_rules,
+        active_jobs=active_jobs
+    )
+
+
+async def crawl_website_task(job_id: str, url: str, folder_path: str, page_rules: dict, active_jobs: dict):
+    """Background task to handle website crawling"""
+    try:
+        active_jobs[job_id]["status"] = "running"
+
+        # Start crawling
+        result = await fetch_all_pages(url, folder_path, page_rules)
+
+        if result["status"] == "success":
+            # Update job status on success
+            active_jobs[job_id]["status"] = "completed"
+            active_jobs[job_id]["message"] = f"Successfully crawled website: {url}"
+        else:
+            # Update job status on failure
+            active_jobs[job_id]["status"] = "failed"
+            active_jobs[job_id]["message"] = f"Error crawling website: {result['message']}"
+    except Exception as e:
+        # Handle any unexpected exceptions
+        active_jobs[job_id]["status"] = "failed"
+        active_jobs[job_id]["message"] = f"Error crawling website: {str(e)}"
