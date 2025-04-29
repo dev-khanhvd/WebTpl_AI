@@ -1,13 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 import platform
 import subprocess
-from pydantic import BaseModel
-
-from agents.category_page import CategoryPage
-from agents.home_page import HomePage
-from agents.menu_part import MenuPart
-from agents.product_detail_page import ProductDetailPage
-
 router = APIRouter(
     prefix="/agent",
     tags=["agent"],
