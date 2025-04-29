@@ -1,6 +1,5 @@
 from elasticsearch import Elasticsearch
 import math
-import json
 class ElasticsearchDB:
     def __init__(self, base_dir,index_name='data_training', host='http://localhost:9200'):
 
