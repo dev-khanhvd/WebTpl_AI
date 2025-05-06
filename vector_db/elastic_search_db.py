@@ -1,8 +1,9 @@
 from elasticsearch import Elasticsearch
+from config import ELASTIC_HOST
 import math
 class ElasticsearchDB:
     # def __init__(self, base_dir,index_name='data_training', host='http://localhost:9200',username=None, password=None):
-    def __init__(self, base_dir,index_name='data_training', host='https://35.202.137.102:9200',username=None, password=None):
+    def __init__(self, base_dir,index_name='data_training', host=ELASTIC_HOST,username=None, password=None):
 
         if username and password:
             self.client = Elasticsearch(
