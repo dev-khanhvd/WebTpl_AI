@@ -3,7 +3,7 @@ import uuid
 import re
 import os
 
-from config import MODEL_NAME_4o_MINI, MODEL_NAME_4o, MAX_TOKEN, OPENAI_API_KEY, TEMPERATURE
+from config import USER_NAME,PASSWORD,MODEL_NAME_4o_MINI, MODEL_NAME_4o, MAX_TOKEN, OPENAI_API_KEY, TEMPERATURE
 from vector_db.elastic_search_db import ElasticsearchDB
 from openai import OpenAI
 from utils.token_optimizer import TokenOptimizer
@@ -42,7 +42,7 @@ class Embedding:
             index_name = os.path.splitext(filename)[0].lower()
 
             # Create a new ElasticsearchDB instance for this file
-            es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=index_name)
+            es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=index_name,username=USER_NAME,password=PASSWORD)
             self.collections[index_name] = es_db
 
             print(f"Processing file: {filename} -> index: {index_name}")
@@ -190,7 +190,7 @@ class Embedding:
             index_name = os.path.splitext(filename)[0].lower()
             try:
                 # Create a temporary ES instance for this index
-                es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=index_name)
+                es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=index_name,username=USER_NAME,password=PASSWORD)
                 es_db.delete_collection()
                 deleted_count += 1
             except Exception as e:
@@ -206,7 +206,7 @@ class Embedding:
             # Get embeddings from a specific index
             if index_name not in self.collections:
                 # Create temporary instance if needed
-                es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=index_name)
+                es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=index_name,username=USER_NAME,password=PASSWORD)
             else:
                 es_db = self.collections[index_name]
 
@@ -221,7 +221,7 @@ class Embedding:
 
                 index_name = os.path.splitext(filename)[0].lower()
                 try:
-                    es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=index_name)
+                    es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=index_name,username=USER_NAME,password=PASSWORD)
                     all_results[index_name] = es_db.get()
                 except Exception as e:
                     print(f"Error getting embeddings from {index_name}: {str(e)}")
@@ -313,21 +313,21 @@ class Embedding:
             prompt = optimizer.truncate_text(prompt, MAX_TOKEN)
 
         print(prompt)
-        # completion = self.client.chat.completions.create(
-        #     model= model_name,
-        #     store=True,
-        #     max_tokens=MAX_TOKEN,
-        #     temperature=TEMPERATURE,
-        #     messages=[
-        #         {
-        #             "role": "user",
-        #             "content": f"""{prompt}"""
-        #         }
-        #     ]
-        # )
-        # if completion:
-        #     object_completion_message = completion.choices[0].message
-        #     return {type: object_completion_message.content}
+        completion = self.client.chat.completions.create(
+            model= model_name,
+            store=True,
+            max_tokens=MAX_TOKEN,
+            temperature=TEMPERATURE,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""{prompt}"""
+                }
+            ]
+        )
+        if completion:
+            object_completion_message = completion.choices[0].message
+            return {type: object_completion_message.content}
 
         # For demo purposes, return a placeholder response
         return {type: "```twig\n<!-- Generated code would appear here -->\n```"}
@@ -363,7 +363,7 @@ class Embedding:
             try:
                 es_db = self.collections.get(idx)
                 if not es_db:
-                    es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=idx)
+                    es_db = ElasticsearchDB(base_dir=self.base_dir, index_name=idx,username=USER_NAME,password=PASSWORD)
                     self.collections[idx] = es_db
 
                 # Skip empty indices

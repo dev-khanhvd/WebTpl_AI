@@ -1,13 +1,22 @@
 from elasticsearch import Elasticsearch
 import math
 class ElasticsearchDB:
-    def __init__(self, base_dir,index_name='data_training', host='http://localhost:9200'):
+    # def __init__(self, base_dir,index_name='data_training', host='http://localhost:9200',username=None, password=None):
+    def __init__(self, base_dir,index_name='data_training', host='https://35.202.137.102:9200',username=None, password=None):
 
-        self.client = Elasticsearch(
-            [host],
-            request_timeout=30,
-            verify_certs=False
-        )
+        if username and password:
+            self.client = Elasticsearch(
+                [host],
+                basic_auth=(username, password),
+                request_timeout=30,
+                verify_certs=False
+            )
+        else:
+            self.client = Elasticsearch(
+                [host],
+                request_timeout=30,
+                verify_certs=False
+            )
         self.index = index_name
         self.base_dir = base_dir
         try:
