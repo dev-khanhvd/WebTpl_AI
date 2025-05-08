@@ -112,7 +112,7 @@ class DetectHtml:
             promotion_section = potential_parents[0]
             promotion_section.clear()
             embedings = Embedding(self.base_dir)
-            result = embedings.process_question(question, type, section_wrp)
+            result = embedings.process_question(question, type, section_wrp, None, 'home_tranning')
 
             if result:
                 section_prm = BeautifulSoup(f"\n{result}\n", "html.parser")
@@ -173,7 +173,7 @@ class DetectHtml:
             attrs_section = potential_parents[0]
             attrs_section.clear()
             embedings = Embedding(self.base_dir)
-            result = embedings.process_question(question, type, section_wrp)
+            result = embedings.process_question(question, type, section_wrp, None, 'product_category_tranning')
 
             if result:
                 section_prm = BeautifulSoup(f"\n{result}\n", "html.parser")

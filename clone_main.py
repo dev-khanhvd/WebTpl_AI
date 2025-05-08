@@ -37,7 +37,6 @@ class CrawlRequest(BaseModel):
     folder_name: str
     url: str
     rule_type: str  # "haravan" or "sapo"
-    remove_folder_status: bool
 
 
 class AgentRequest(BaseModel):
@@ -63,13 +62,10 @@ async def crawl_website(request: CrawlRequest, background_tasks: BackgroundTasks
     job_id = str(uuid.uuid4())
 
     base_dir = BASE_DIR
-    remove_folder = False
-    if request.remove_folder_status:
-        remove_folder = request.remove_folder_status
 
     # Create folder structure
     folder_manager = FolderManager(base_dir)
-    folder_path = folder_manager.create_main_folder(request.folder_name, remove_folder)
+    folder_path = folder_manager.create_main_folder(request.folder_name)
 
     if not folder_path:
         raise HTTPException(status_code=400, detail="Folder deleted or not found")

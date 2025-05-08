@@ -52,29 +52,6 @@ class FolderManager:
 
         return folder_path
 
-    def delete_directory(self, dir_path):
-        """Delete all files in a directory on GitHub"""
-        if not self.repo:
-            print("GitHub repo not configured, skipping deletion.")
-            return
-
-        try:
-            # Get all files in the directory (GitHub API lists files at the root)
-            contents = self.repo.get_contents(dir_path)
-
-            for content in contents:
-                if content.type == 'file':
-                    self.repo.delete_file(content.path, f"Delete file {content.path}", content.sha)
-                    print(f"Deleted file: {content.path}")
-                elif content.type == 'dir':
-                    # Recursively delete files in subdirectories
-                    self.delete_directory(content.path)
-
-            # After all files are deleted, GitHub will automatically remove the empty directory
-            print(f"Directory {dir_path} is now empty.")
-        except Exception as e:
-            print(f"Error deleting directory {dir_path}: {e}")
-
     def create_childs_folder(self, base_path, structure):
         """Create child folders and files based on template structure in GitHub repo"""
         if not base_path:
