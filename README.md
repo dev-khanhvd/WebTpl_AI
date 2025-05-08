@@ -43,3 +43,14 @@ https://python.langchain.com/docs/how_to/installation/
     pip install llama-cpp-python sentence-transformers
     
     - Đang dùng all-mpnet-base-v2 để xử lý embedding 768 chiều
+	
+## Kích hoạt môi trường ảo (Nếu là project checkout mới về)
+	python3.12 -m venv env
+	.\env\Scripts\activate
+
+## Lưu thông số các thư viện trong dự án vào requirements.txt
+	pip freeze > requirements.txt
+	
+## Cài đặt thư viện từ requirements.txt
+	pip install -r requirements.txt
+	
