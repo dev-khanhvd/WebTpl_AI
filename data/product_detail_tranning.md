@@ -123,7 +123,7 @@ Dưới đây là cách thức lấy ra sắc của sản phẩm trên website:
 ```
 ### Thuộc tính kích cỡ
 
-Hiển thị các lựa chọn kích cỡ của sản phẩm trên website, giúp người dùng chọn đúng size phù hợp trước khi mua hàng.
+Cho phép người dùng lựa chọn kích cỡ phù hợp cho sản phẩm, giúp đảm bảo vừa vặn và mang lại trải nghiệm mua sắm chính xác, thuận tiện hơn.
 
 * Cách làm:
   * B1. Hiển thị chọn Kích cỡ (size)

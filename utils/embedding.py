@@ -312,9 +312,9 @@ class Embedding:
         if optimizer.count_tokens(prompt) > MAX_TOKEN:
             prompt = optimizer.truncate_text(prompt, MAX_TOKEN)
 
-        print(prompt)
+        # print(prompt)
         completion = self.client.chat.completions.create(
-            model= model_name,
+            model=model_name,
             store=True,
             max_tokens=MAX_TOKEN,
             temperature=TEMPERATURE,
@@ -328,9 +328,6 @@ class Embedding:
         if completion:
             object_completion_message = completion.choices[0].message
             return {type: object_completion_message.content}
-
-        # For demo purposes, return a placeholder response
-        return {type: "```twig\n<!-- Generated code would appear here -->\n```"}
 
     def get_answer_with_details(self, question: str, index_name=None):
         """

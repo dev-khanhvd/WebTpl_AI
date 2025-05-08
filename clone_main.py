@@ -14,6 +14,9 @@ from session import set_session
 # Import the routers from the agent modules
 from agents.base_agent import router as base_agent_router
 from agents.home_page import router as home_page_router
+from agents.category_page import router as category_page_router
+from agents.menu_part import router as menu_part_router
+from agents.product_detail_page import router as product_detail_router
 app = FastAPI(
     title="Website Cloner API",
     description="API for cloning websites, filling code logic, and updating training data",
@@ -26,12 +29,15 @@ active_jobs = {}
 
 app.include_router(base_agent_router)
 app.include_router(home_page_router)
+app.include_router(category_page_router)
+app.include_router(menu_part_router)
+app.include_router(product_detail_router)
 
 class CrawlRequest(BaseModel):
-    base_dir: str
     folder_name: str
     url: str
     rule_type: str  # "haravan" or "sapo"
+    remove_folder_status: bool
 
 
 class AgentRequest(BaseModel):
@@ -57,14 +63,16 @@ async def crawl_website(request: CrawlRequest, background_tasks: BackgroundTasks
     job_id = str(uuid.uuid4())
 
     base_dir = BASE_DIR
-    if(request.base_dir):
-        base_dir = request.base_dir
+    remove_folder = False
+    if request.remove_folder_status:
+        remove_folder = request.remove_folder_status
+
     # Create folder structure
     folder_manager = FolderManager(base_dir)
-    folder_path = folder_manager.create_main_folder(request.folder_name)
+    folder_path = folder_manager.create_main_folder(request.folder_name, remove_folder)
 
     if not folder_path:
-        raise HTTPException(status_code=500, detail="Failed to create folder structure")
+        raise HTTPException(status_code=400, detail="Folder deleted or not found")
 
     set_session(base_dir, folder_path)
 
@@ -91,30 +99,29 @@ async def crawl_website(request: CrawlRequest, background_tasks: BackgroundTasks
         "url": request.url,
         "rule_type": request.rule_type
     }
-
     # Start crawling in background
-    background_tasks.add_task(
-        crawl_website_task,
+    await crawl_website_task(
         job_id=job_id,
         url=request.url,
-        folder_path=folder_path,
+        folder_name=request.folder_name,
         page_rules=page_rules
     )
 
     return CrawlResponse(
         job_id=job_id,
-        status="started",
+        status=active_jobs[job_id]["status"],
         folder_path=folder_path,
-        message=f"Started crawling website: {request.url}"
+        message=active_jobs[job_id].get("message", "Crawling finished.")
     )
 
 
-async def crawl_website_task(job_id: str, url: str, folder_path: str, page_rules: Dict):
+async def crawl_website_task(job_id: str, url: str, folder_name: str, page_rules: Dict):
+
     try:
         active_jobs[job_id]["status"] = "running"
 
         # Start crawling
-        await fetch_all_pages(url, folder_path, page_rules)
+        await fetch_all_pages(url, folder_name, page_rules)
 
         # Update RFSjob status
         active_jobs[job_id]["status"] = "completed"

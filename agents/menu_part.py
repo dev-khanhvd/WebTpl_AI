@@ -1,28 +1,102 @@
 import json
 import re
-import os
-from config import PAGE_TYPE_MAPPING
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import Dict, Optional, Union
+
+from config import PAGE_TYPE_MAPPING, GITHUB_ACCESS_TOKEN, GITHUB_REPO_FULLNAME, BASE_BRANCH
+from github import Github
 from bs4 import BeautifulSoup
 from utils.embedding import Embedding
 
+from session import current_folder_path, normalize_github_path
+
+router = APIRouter(
+    prefix="/agent/menu-part",
+    tags=["agent"],
+    responses={404: {"description": "Not found"}},
+)
+
+
+class MenuPartRequest(BaseModel):
+    folder_name: str = None
+    menu_area: str  # homepage, header, footer
+    wrapper_selector: str
+    options: Optional[Dict[str, Union[str, int]]] = None
+
+
+@router.post("/")
+async def menu_part_options():
+    """Returns available options for the menu part agent"""
+    options = [
+        {'id': 'homepage', 'name': 'Homepage Menu'},
+        {'id': 'header', 'name': 'Header Menu'},
+        {'id': 'footer', 'name': 'Footer Menu'},
+    ]
+
+    return {"status": "success", "options": options}
+
+
+@router.post("/process")
+async def process_menu_part(request: MenuPartRequest):
+    """Process the menu part with the selected option"""
+
+    if not request.menu_area or not request.wrapper_selector:
+        raise HTTPException(status_code=400, detail="menu_area and wrapper_selector are required")
+
+    folder_name = current_folder_path
+    if request.folder_name:
+        folder_name = request.folder_name
+    menu_part = MenuPart(folder_name)
+
+    try:
+        result = menu_part.extract_menu(request.menu_area, request.wrapper_selector, request.options)
+        return {"status": "success", "message": f"Processed menu for {request.menu_area}", "result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
+
+
 class MenuPart:
-    def __init__(self, base_dir):
+    def __init__(self, base_dir, base_branch=BASE_BRANCH):
         self.base_dir = base_dir
         self.template_mapping = json.loads(PAGE_TYPE_MAPPING)
 
-    def load_menu(self):
-        class_input = input(f"Nhập nơi cần xử lý menu (Ví dụ: hompage, header, footer) : ").strip()
-        if class_input:
-            file_path = os.path.join(self.base_dir, self.template_mapping.get(class_input, ""))
-            with open(file_path, 'r', encoding='utf-8') as file:
-                template_content = file.read()
-            menu_wrapper = input(f"Nhập wrapper menu cho menu vùng '{class_input.lower()}' : ").strip()
-            if template_content:
-                self.extract_menu(template_content, menu_wrapper, file_path)
+        self.github_token = GITHUB_ACCESS_TOKEN
+        self.github_repo_name = GITHUB_REPO_FULLNAME
+        self.base_branch = base_branch
+        self.github = Github(self.github_token)
+        self.repo = self.github.get_repo(self.github_repo_name)
 
-    def extract_menu(self, html, wrapper_selector:str, file_path:str):
+    def extract_menu(self, menu_area, wrapper_selector, options=None):
+        """Extract menu from the specified area and apply transformations"""
+
+        if not self.base_dir:
+            return {"success": False, "message": "Base directory not provided"}
+
+        try:
+            # Get the file path based on the selected menu area
+            file_path = normalize_github_path(self.base_dir + "/" + self.template_mapping.get(menu_area, ""))
+
+            # Get content from GitHub
+            file_content = self.repo.get_contents(file_path, ref=self.base_branch)
+            template_content = file_content.decoded_content.decode('utf-8')
+
+            if not template_content:
+                return {"success": False, "message": "Template content not found"}
+
+            # Process the menu
+            result = self.process_menu(template_content, wrapper_selector, file_path, 'home_tranning')
+            return result or {"success": True, "message": "Processing completed"}
+
+        except Exception as e:
+            return {"success": False, "message": f"Error: {str(e)}"}
+
+    def process_menu(self, html, wrapper_selector, file_path, index_name=None):
+        """Process the menu HTML and create menu files"""
         potential_parents = []
         soup = BeautifulSoup(html, "html.parser")
+
+        # Find elements by ID or class that match the wrapper selector
         elements = soup.find_all(id=re.compile(wrapper_selector))
         if not elements:
             elements = soup.find_all(class_=re.compile(wrapper_selector))
@@ -30,41 +104,81 @@ class MenuPart:
         if elements:
             potential_parents.extend(elements)
 
-        if potential_parents:
-            parent_wrapper = potential_parents[0]
-            for ul in parent_wrapper.find_all("ul"):
-                self.filter_ul(ul)
+        if not potential_parents:
+            return {"success": False, "message": "No menu wrapper found"}
 
-            embedings = Embedding(self.base_dir)
+        parent_wrapper = potential_parents[0]
 
-            menu_html1 = str(parent_wrapper)
-            file_path1 = os.path.join(self.base_dir, self.template_mapping.get('menu', ""))
-            question1 = 'Danh mục sản phẩm'
-            menu_result_1 = embedings.process_question(question1, 'home_menu_product_category', menu_html1)
-            with open(file_path1, "w", encoding="utf-8") as f1:
-                f1.write(menu_result_1)
+        # Process all UL elements in the wrapper
+        for ul in parent_wrapper.find_all("ul"):
+            self.filter_ul(ul)
 
-            menu_html2 = str(parent_wrapper)
-            file_path2 = os.path.join(self.base_dir, self.template_mapping.get('menu_custom', ""))
-            question2 = 'Danh mục tự tạo'
-            menu_result_2 = embedings.process_question(question2, 'home_menu_product_category', menu_html2)
-            with open(file_path2, "w", encoding="utf-8") as f2:
-                f2.write(menu_result_2)
+        # Create embedding instance
+        embedding = Embedding(self.base_dir)
 
-            twig_code = """
-            {% if(menuIsExisted({'type': 'header' })) %}
-                {% include 'other/menu_custom' %}
-            {% else %}
-                {% include 'other/menu' %}
-            {% endif %}
-            """.strip()
+        # Process product category menu
+        menu_html1 = str(parent_wrapper)
+        menu_file_path1 = normalize_github_path(self.base_dir + "/" + self.template_mapping.get('menu', ""))
+        # question1 = 'Danh mục sản phẩm'
+        question1 = 'Danh mục tự tạo'
+        menu_result_1 = embedding.process_question(question1, 'home_menu_product_category', menu_html1,None, index_name)
 
-            parent_wrapper.replace_with(soup.new_string(twig_code))
+        #Save the product category menu file
+        menu_file1 = self.repo.get_contents(menu_file_path1, ref=self.base_branch)
+        self.repo.update_file(
+            menu_file_path1,
+            "Update product category menu",
+            menu_result_1,
+            menu_file1.sha,
+            branch=self.base_branch
+        )
 
-            with open(file_path, "w", encoding="utf-8") as f3:
-                f3.write(str(soup.prettify()))
+        # Process custom menu
+        menu_html2 = str(parent_wrapper)
+        menu_file_path2 = normalize_github_path(self.base_dir + "/" + self.template_mapping.get('menu_custom', ""))
+        question2 = 'Danh mục tự tạo'
+        menu_result_2 = embedding.process_question(question2, 'home_menu_product_category', menu_html2,None, index_name)
 
-        return None
+        # Save the custom menu file
+        menu_file2 = self.repo.get_contents(menu_file_path2, ref=self.base_branch)
+        self.repo.update_file(
+            menu_file_path2,
+            "Update custom menu",
+            menu_result_2,
+            menu_file2.sha,
+            branch=self.base_branch
+        )
+
+        # Replace the original menu with a Twig include statement
+        twig_code = """
+        {% if(menuIsExisted({'type': 'header' })) %}
+            {% include 'other/menu_custom' %}
+        {% else %}
+            {% include 'other/menu' %}
+        {% endif %}
+        """.strip()
+
+        parent_wrapper.replace_with(soup.new_string(twig_code))
+
+        # Update the original file
+        file_content = self.repo.get_contents(file_path, ref=self.base_branch)
+        self.repo.update_file(
+            file_path,
+            "Update menu include",
+            str(soup.prettify()),
+            file_content.sha,
+            branch=self.base_branch
+        )
+
+        return {
+            "success": True,
+            "message": "Menu processed successfully",
+            "details": {
+                "product_menu_path": menu_file_path1,
+                "custom_menu_path": menu_file_path2,
+                "original_file_updated": file_path
+            }
+        }
 
     def filter_ul(self, ul_tag):
         if not ul_tag:

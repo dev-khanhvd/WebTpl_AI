@@ -1,13 +1,14 @@
 import json
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Dict, List, Optional, Union
+from typing import Dict, Optional, Union
 
-from config import PAGE_TYPE_MAPPING
+from config import PAGE_TYPE_MAPPING, GITHUB_ACCESS_TOKEN, GITHUB_REPO_FULLNAME, BASE_BRANCH
+from github import Github
 from utils.detect_html import DetectHtml
 from website_cloner.folder_manager import FolderManager
 
-from session import current_folder_path
+from session import current_folder_path, normalize_github_path
 
 router = APIRouter(
     prefix="/agent/home-page",
@@ -17,7 +18,7 @@ router = APIRouter(
 
 
 class HomePageRequest(BaseModel):
-    url_path: str = None
+    folder_name: str = None
     menu_choice: int
     wrapper_classes: str
     item_classes: str = None
@@ -25,7 +26,7 @@ class HomePageRequest(BaseModel):
 
 
 class HomePageProductTypeRequest(BaseModel):
-    url_path: str
+    folder_name: str
     wrapper_classes: str
     options: Optional[Dict[str, Union[str, int]]] = None
 
@@ -70,10 +71,10 @@ async def process_home_page(request: HomePageRequest):
     if not request.wrapper_classes:
         raise HTTPException(status_code=400, detail="wrapper_classes is required")
 
-    folder_path = current_folder_path
-    if request.url_path:
-        folder_path = request.url_path
-    home_page = HomePage(folder_path)
+    folder_name = current_folder_path
+    if request.folder_name:
+        folder_name = request.folder_name
+    home_page = HomePage(folder_name)
 
     if not home_page.base_dir:
         raise HTTPException(status_code=400, detail="base_dir is required")
@@ -101,10 +102,10 @@ async def process_home_products(request: HomePageProductTypeRequest):
     if not request.wrapper_classes:
         raise HTTPException(status_code=400, detail="wrapper_classes is required")
 
-    folder_path = current_folder_path
-    if request.url_path:
-        folder_path = request.url_path
-    home_page = HomePage(folder_path)
+    folder_name = current_folder_path
+    if request.folder_name:
+        folder_name = request.folder_name
+    home_page = HomePage(folder_name)
 
     if not home_page.base_dir:
         raise HTTPException(status_code=400, detail="base_dir is required")
@@ -124,63 +125,68 @@ async def process_home_products(request: HomePageProductTypeRequest):
 
 
 class HomePage:
-    def __init__(self, base_dir):
+    def __init__(self, base_dir , base_branch=BASE_BRANCH):
         self.base_dir = base_dir
         self.template_mapping = json.loads(PAGE_TYPE_MAPPING)
-        self.file_path = self.base_dir + '\\' + self.template_mapping['homepage']
+        self.file_path = normalize_github_path(self.base_dir + "/" + self.template_mapping['homepage'])
+
+        self.github_token = GITHUB_ACCESS_TOKEN
+        self.github_repo_name = GITHUB_REPO_FULLNAME
+        self.base_branch = base_branch
+        self.github = Github(self.github_token)
+        self.repo = self.github.get_repo(self.github_repo_name)
 
     def get_home_page_content(self, wrapper_classes, choice_selected, item_classes=None, options=None):
-        result = {"success": False, "message": "Processing failed"}
 
         if not self.base_dir:
             return {"success": False, "message": "Base directory not provided"}
-
         try:
-            with open(self.file_path, 'r', encoding='utf-8') as file:
-                template_content = file.read()
+            file_content = self.repo.get_contents(self.file_path, ref=self.base_branch)
+            template_content = file_content.decoded_content.decode('utf-8')
+            if not template_content:
+                return {"success": False, "message": "Base directory not provided"}
+            match choice_selected:
+                case 1:
+                    question = "Banner website có thể hiểu là những ô vuông trên đó có slogan"
+                    result = self.detect_block_fill_code(template_content, wrapper_classes, question,
+                                                         'banner_block')
+                case 2:
+                    question = "Banner giới hạn số lượng trang chủ"
+                    result = self.detect_block_fill_code(template_content, wrapper_classes, question,
+                                                         'banner_block',
+                                                         options)
+                case 3:
+                    question = "Có 3 dạng tick để hiển thị sản phẩm trên trang chủ: tick trang chủ, tick mới hoặc tick hot"
+                    result = self.detect_block_fill_code(template_content, wrapper_classes, question,
+                                                         'home_products_list_block', options)
+                case 4:
+                    question = 'Chương trình khuyến mãi và có đếm ngược theo ID của chương trình khuyến mãi đang chạy'
+                    result = self.detect_block_promotion(template_content, wrapper_classes, item_classes, question)
+                case 5:
+                    question = 'Lấy ra danh sách các bài viết tin tức để hiển thị trên website'
+                    result = self.detect_block_fill_code(template_content, wrapper_classes, question,
+                                                         'home_article_news',
+                                                         options)
+                case 6:
+                    question = 'Bộ sưu tập album ảnh'
+                    result = self.detect_block_fill_code(template_content, wrapper_classes, question, 'home_album',
+                                                         options)
+                case 7:
+                    question = 'Danh sách thương hiệu'
+                    result = self.detect_block_fill_code(template_content, wrapper_classes, question, 'home_brands',
+                                                         options)
+                case 8:
+                    question = 'Giúp người dùng dễ dàng chọn đúng nhóm sản phẩm họ quan tâm'
+                    result = self.detect_block_fill_code(template_content, wrapper_classes, question,
+                                                         'home_product_category')
+                case 9:
+                    question = 'Danh sách mã voucher'
+                    result = self.detect_block_fill_code(template_content, wrapper_classes, question,
+                                                         'home_voucher_list')
+                case _:
+                    return {"success": False, "message": "Invalid choice selected"}
 
-                match choice_selected:
-                    case 1:
-                        question = "Banner website có thể hiểu là những ô vuông trên đó có slogan"
-                        result = self.detect_block_fill_code(template_content, wrapper_classes, question,
-                                                             'banner_block')
-                    case 2:
-                        question = "Banner giới hạn số lượng trang chủ"
-                        result = self.detect_block_fill_code(template_content, wrapper_classes, question,
-                                                             'banner_block',
-                                                             options)
-                    case 3:
-                        question = "Có 3 dạng tick để hiển thị sản phẩm trên trang chủ: tick trang chủ, tick mới hoặc tick hot"
-                        result = self.detect_block_fill_code(template_content, wrapper_classes, question,
-                                                             'home_products_list_block', options)
-                    case 4:
-                        question = 'Chương trình khuyến mãi và có đếm ngược theo ID của chương trình khuyến mãi đang chạy'
-                        result = self.detect_block_promotion(template_content, wrapper_classes, item_classes, question)
-                    case 5:
-                        question = 'Lấy ra danh sách các bài viết tin tức để hiển thị trên website'
-                        result = self.detect_block_fill_code(template_content, wrapper_classes, question,
-                                                             'home_article_news',
-                                                             options)
-                    case 6:
-                        question = 'Bộ sưu tập album ảnh'
-                        result = self.detect_block_fill_code(template_content, wrapper_classes, question, 'home_album',
-                                                             options)
-                    case 7:
-                        question = 'Danh sách thương hiệu'
-                        result = self.detect_block_fill_code(template_content, wrapper_classes, question, 'home_brands',
-                                                             options)
-                    case 8:
-                        question = 'Giúp người dùng dễ dàng chọn đúng nhóm sản phẩm họ quan tâm'
-                        result = self.detect_block_fill_code(template_content, wrapper_classes, question,
-                                                             'home_product_category')
-                    case 9:
-                        question = 'Danh sách mã voucher'
-                        result = self.detect_block_fill_code(template_content, wrapper_classes, question,
-                                                             'home_voucher_list')
-                    case _:
-                        return {"success": False, "message": "Invalid choice selected"}
-
-                return result or {"success": True, "message": "Processing completed"}
+            return result or {"success": True, "message": "Processing completed"}
         except Exception as e:
             return {"success": False, "message": f"Error: {str(e)}"}
 
@@ -200,6 +206,6 @@ class HomePage:
                                                                         question, 'home_promotion_details')
         if promotion_block:
             object_file = FolderManager(self.base_dir)
-            save_result = object_file.save_file(self.file_path, promotion_block)
+            save_result = object_file.save_file(self.base_dir, promotion_block)
             return {"success": True, "message": "Promotion block detected and saved", "content_info": str(save_result)}
         return {"success": False, "message": "No promotion block detected"}

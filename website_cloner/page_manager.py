@@ -6,22 +6,20 @@ import re
 import aiohttp
 import asyncio
 from bs4 import BeautifulSoup
-import logging
-from config import PAGE_TYPE_MAPPING
+from github import Github
+from config import PAGE_TYPE_MAPPING, GITHUB_ACCESS_TOKEN, GITHUB_REPO_FULLNAME
 from website_cloner.folder_manager import FolderManager
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+from session import normalize_github_path
 
 class PageManager:
-    def __init__(self, base_url, output_folder, page_rules):
+    def __init__(self, base_url, folder_name, page_rules, github_token=GITHUB_ACCESS_TOKEN,
+                 github_repo_name=GITHUB_REPO_FULLNAME):
         # Ensure base URL has protocol
         if not base_url.startswith(('http://', 'https://')):
             base_url = 'https://' + base_url
 
         self.base_url = base_url
-        self.output_folder = output_folder
+        self.folder_name = folder_name  # Keep for path formatting, but won't write to disk
         self.visited_urls = set()
         self.page_types = page_rules
         self.urls_to_crawl = []
@@ -31,17 +29,57 @@ class PageManager:
             'pages': {}
         }
 
+        # Always require GitHub configuration
+        if not github_token or not github_repo_name:
+            raise ValueError("GitHub token and repository name are required")
+
+        self.github_token = github_token
+        self.github_repo_name = github_repo_name
+        self.github = Github(github_token)
+        self.repo = self.github.get_repo(github_repo_name)
+
+        self.folder_manager = FolderManager()
+        # Flag to track if CSS has been scanned
+        self.css_scanned = False
+
     async def fetch_page(self, session, url):
         try:
             async with session.get(url, ssl=False, timeout=30) as response:
                 if response.status == 200:
                     return await response.text()
                 else:
-                    logger.warning(f"Failed to fetch {url}: Status {response.status}")
+                    print(f"Failed to fetch {url}: Status {response.status}")
                     return None
         except Exception as e:
-            logger.error(f"Error fetching {url}: {str(e)}")
+            print(f"Error fetching {url}: {str(e)}")
             return None
+
+    async def scan_css_first(self, session, url):
+        """Scan and save CSS files before processing any HTML content"""
+        # Fetch the homepage content
+        content = await self.fetch_page(session, url)
+        if not content:
+            print("Failed to fetch homepage for CSS scanning")
+            return False
+
+        # Parse the homepage content
+        soup = BeautifulSoup(content, 'html.parser')
+
+        # Extract and save CSS files directly to GitHub
+        print("Scanning and saving CSS files first...")
+        css_files = self.folder_manager.create_css_files(self.folder_name, soup)
+        if not css_files:
+            print("No CSS files found or returned.")
+            return False
+        # Save CSS files to GitHub
+        for css_path, css_content in css_files.items():
+            github_path = os.path.join(self.folder_name, css_path).replace('\\', '/')
+            self.save_to_github(github_path, css_content)
+
+        # Mark CSS as scanned
+        self.css_scanned = True
+        print("CSS scanning completed")
+        return True
 
     async def process_page(self, session, url):
         # Skip if already visited
@@ -59,6 +97,10 @@ class PageManager:
         path = urlparse(url).path
         page_type_found = False
 
+        soup = BeautifulSoup(content, 'html.parser')
+        # Extract layout components (header, footer) from every page
+        self.extract_layout_components(soup)
+
         # Identify page type based on URL pattern
         for page_type, info in self.page_types.items():
             if 'pattern' in info and re.match(info['pattern'], path):
@@ -71,10 +113,6 @@ class PageManager:
             self.extract_and_save_page_content(content, 'homepage', url)
             self.page_types['homepage']['found'] = True
             page_type_found = True
-
-        # Extract layout components from every page
-        soup = BeautifulSoup(content, 'html.parser')
-        self.extract_layout_components(soup)
 
         # Find links to other pages
         links = self.find_links(soup, url)
@@ -122,10 +160,9 @@ class PageManager:
         return links
 
     def extract_and_save_page_content(self, content, page_type, url):
-        """Extract content and save to appropriate file"""
-        # Check if page type exists in mapping
+        """Extract content from the webpage and save it to GitHub if the target file is missing or empty."""
         if page_type not in self.type_mapping:
-            logger.warning(f"No mapping found for page type: {page_type}")
+            print(f"No mapping found for page type: {page_type}")
             return
 
         mapping = self.type_mapping.get(page_type)
@@ -136,92 +173,131 @@ class PageManager:
             elif page_type == 'blog':
                 relative_path = mapping.get("blog_category")
             else:
-                # Default case if needed
                 relative_path = next(iter(mapping.values()), None)
         else:
             relative_path = mapping
 
         if not relative_path:
-            logger.warning(f"Empty mapping for page type: {page_type}")
+            print(f"Empty mapping for page type: {page_type}")
             return
-
-        file_path = os.path.join(self.output_folder, relative_path)
-
-        # Check if this is a page type that should also be saved to an index file
+        relative_path = self.folder_name + "/" + relative_path
+        # Determine index path if applicable
+        index_path = None
         info = self.page_types.get(page_type, {})
         if info.get('index_file', False) and isinstance(mapping, dict):
-            # Get the correct index path based on page type
             if page_type == 'category':
-                index_path = mapping.get("product_index")
+                index_path = self.folder_name + "/" + mapping.get("product_index")
             elif page_type == 'blog':
-                index_path = mapping.get("blog_index")
-            else:
-                index_path = None
+                index_path = self.folder_name + "/" + mapping.get("blog_index")
 
-            if index_path:
-                index_file_path = os.path.join(self.output_folder, index_path)
-            else:
-                index_file_path = None
-        else:
-            index_file_path = None
-
-        # Extract content
+        # Parse and clean content
         soup = BeautifulSoup(content, 'html.parser')
-
-        # Remove scripts and style for cleaner content
         for script in soup.find_all('script'):
             script.extract()
 
-        # Get main content (excluding header and footer)
         main_content = soup.body
         if not main_content:
-            return "Không tìm thấy body!"
+            print("Body not found!")
+            return
+
         for tag in main_content.find_all(["header", "footer"]):
             tag.extract()
-        result = BeautifulSoup("".join(str(tag) for tag in main_content.contents), "html.parser")
 
+        result = BeautifulSoup("".join(str(tag) for tag in main_content.contents), "html.parser")
         formatted_content = self.page_render_components(page_type, result)
 
-        # Create parent directory if it doesn't exist
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        # Save main file to GitHub
+        self.save_to_github_if_empty(relative_path, formatted_content, f"Save {page_type} content to GitHub")
 
-        # Check if file exists and has content before writing
-        flag_content = True
-        if os.path.exists(file_path):
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read().strip()
-                if content:  # If file already has content
-                    flag_content = False
-                    logger.info(f"File already has content, skipping: {file_path}")
+        # Save index file if applicable
+        if index_path:
+            index_type = 'product_index' if page_type == 'category' else 'blog_index'
+            formatted_index = self.page_render_components(index_type, result)
+            self.save_to_github_if_empty(index_path, formatted_index, f"Save {index_type} for {page_type}")
 
-        # Save the processed content if file doesn't exist or is empty
-        if flag_content:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(formatted_content)
-            logger.info(f"Saved content for {page_type}: {file_path}")
+    def save_to_github_if_empty(self, file_path, content, message):
+        """Only update/create file in GitHub if file is missing or empty."""
+        try:
+            github_path = normalize_github_path(file_path)
+            existing_file = self.repo.get_contents(github_path, ref="main")
+            existing_content = existing_file.decoded_content.decode("utf-8").strip()
+            if existing_content:
+                print(f"File already has content, skipping: {github_path}")
+                return
+            # Nếu file có nhưng rỗng, gọi save_to_github để update
+            self.save_to_github(github_path, content, message)
+        except Exception as e:
+            if '404' in str(e):
+                # Nếu file chưa có, gọi save_to_github để tạo
+                self.save_to_github(file_path, content, message)
+            else:
+                print(f"Error checking file existence on GitHub: {e}")
 
-        # If it's a category or blog_category, also save to index file
-        if index_file_path:
-            formatted_content2 = self.page_render_components('product_index', result)
-            if page_type == 'blog':
-                formatted_content2 = self.page_render_components('blog_index', result)
+    def save_to_github(self, file_path, content, message=None):
+        """Create or update file in GitHub repository"""
+        try:
+            github_path =  normalize_github_path(file_path)
 
-            os.makedirs(os.path.dirname(index_file_path), exist_ok=True)
+            try:
+                # Kiểm tra file đã tồn tại chưa
+                existing_file = self.repo.get_contents(github_path, ref="main")
+                self.repo.update_file(
+                    path=github_path,
+                    message=message,
+                    content=content,
+                    sha=existing_file.sha,
+                    branch="main"
+                )
+                print(f"Updated file in GitHub: {github_path}")
+            except Exception as e:
+                if '404' in str(e):
+                    self.repo.create_file(
+                        path=github_path,
+                        message=message,
+                        content=content,
+                        branch="main"
+                    )
+                    print(f"Created file in GitHub: {github_path}")
+                else:
+                    raise e
+        except Exception as e:
+            print(f"Error saving to GitHub: {e}")
 
-            # Check if file exists and has content before writing
-            flag_content_index = True
-            if os.path.exists(index_file_path):
-                with open(index_file_path, 'r', encoding='utf-8') as f:
-                    content = f.read().strip()
-                    if content:
-                        flag_content_index = False
-                        logger.info(f"File already has content, skipping: {index_file_path}")
+    def ensure_github_directory_exists(self, directory_path):
+        """Ensure all parent directories exist in the GitHub repository"""
+        if not directory_path or directory_path == '.' or directory_path == '/':
+            return
 
-            # Save the processed content if file doesn't exist or is empty
-            if flag_content_index:
-                with open(index_file_path, 'w', encoding='utf-8') as f:
-                    f.write(formatted_content2)
-                logger.info(f"Saved content for {page_type}: {index_file_path}")
+        # Convert to GitHub-style path and remove leading/trailing slashes
+        dir_path = directory_path.replace('\\', '/')
+        if dir_path.startswith('/'):
+            dir_path = dir_path[1:]
+        if dir_path.endswith('/'):
+            dir_path = dir_path[:-1]
+
+        # Check if this directory already exists
+        try:
+            self.repo.get_contents(dir_path, ref="main")
+            return  # Directory exists
+        except Exception:
+            # Directory doesn't exist, ensure parent directory exists first
+            parent_dir = os.path.dirname(dir_path)
+            if parent_dir and parent_dir != '.' and parent_dir != dir_path:
+                self.ensure_github_directory_exists(parent_dir)
+
+            # Create an empty .gitkeep file to create the directory
+            try:
+                self.repo.create_file(
+                    f"{dir_path}/.gitkeep",
+                    f"Create directory: {dir_path}",
+                    "",
+                    branch="main"
+                )
+                print(f"Created directory in GitHub: {dir_path}")
+            except Exception as e:
+                # If error is because file already exists, that's fine
+                if "already exists" not in str(e):
+                    print(f"Error creating directory in GitHub: {e}")
 
     def page_render_components(self, page_type, content):
         page_titles = {
@@ -322,17 +398,17 @@ class PageManager:
                 "{%extends \"layout/layout\" %}\n"
                 "{%block meta %}\n"
                 "    {{ headTitle(" + page_title + ").setSeparator(' - ').setAutoEscape(false)|raw }}\n"
-                "    <meta name=\"keywords\" content=\"{{ " + meta_keywords + " }}\">\n"
-                "    <meta name=\"description\" content=\"{{ " + meta_description + " }}\">\n"
-                "    <meta property=\"og:title\" content=\"{{ " + meta_title + " }}\">\n"                                                                                                                                                           
-                "    <meta property=\"og:url\" content=\"{{ " + url + " }}\">\n"
-                "    <meta property=\"og:image\" content=\"{{ " + image + " }}\">\n"
-                "    <link rel=\"canonical\" href=\"{{ " + canonical_link + " }}\">\n"
-                "{%endblock %}\n"
-                "\n"
-                "{%block body %}\n"
+                                                   "    <meta name=\"keywords\" content=\"{{ " + meta_keywords + " }}\">\n"
+                                                                                                                 "    <meta name=\"description\" content=\"{{ " + meta_description + " }}\">\n"
+                                                                                                                                                                                     "    <meta property=\"og:title\" content=\"{{ " + meta_title + " }}\">\n"
+                                                                                                                                                                                                                                                    "    <meta property=\"og:url\" content=\"{{ " + url + " }}\">\n"
+                                                                                                                                                                                                                                                                                                          "    <meta property=\"og:image\" content=\"{{ " + image + " }}\">\n"
+                                                                                                                                                                                                                                                                                                                                                                    "    <link rel=\"canonical\" href=\"{{ " + canonical_link + " }}\">\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                "{%endblock %}\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                "\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                "{%block body %}\n"
                 + str(variable) + "\n" + str(content.prettify()) + "\n"
-                 "{%endblock %}\n").strip()
+                                                                   "{%endblock %}\n").strip()
 
     def layout_render_component(self):
         return ("""
@@ -366,51 +442,79 @@ class PageManager:
              """).strip()
 
     def extract_layout_components(self, soup):
-        """Extract header and footer from page"""
-        folder_manager = FolderManager(self.base_url)
-        folder_manager.create_css_files(self.output_folder, soup)
-
+        """Extract header and footer from page and save directly to GitHub"""
         # Extract header
         header = soup.find('header') or soup.find(class_=re.compile(r'header|top-bar'))
         if header and not self.results['pages'].get('header'):
-            header_path = os.path.join(self.output_folder, "view/layout/header.twig")
-            os.makedirs(os.path.dirname(header_path), exist_ok=True)
-            with open(header_path, 'w', encoding='utf-8') as f:
-                f.write(str(header.prettify()))
+            # Generate GitHub path
+            header_path = f"{self.folder_name}/view/layout/header.twig"
+
+            # Ensure parent directory exists before saving
+            self.ensure_github_directory_exists(os.path.dirname(header_path))
+
+            # Save directly to GitHub with proper message
+            self.save_to_github_if_empty(header_path, str(header.prettify()), "Save header component")
+
             self.results['pages']['header'] = {
                 'file': header_path
             }
+            print(f"Header component saved to {header_path}")
 
         # Extract footer
         footer = soup.find('footer') or soup.find(class_=re.compile(r'footer|bottom-bar'))
         if footer and not self.results['pages'].get('footer'):
-            footer_path = os.path.join(self.output_folder, "view/layout/footer.twig")
-            os.makedirs(os.path.dirname(footer_path), exist_ok=True)
-            with open(footer_path, 'w', encoding='utf-8') as f:
-                f.write(str(footer.prettify()))
+            # Generate GitHub path
+            footer_path = f"{self.folder_name}/view/layout/footer.twig"
+
+            # Ensure parent directory exists before saving
+            self.ensure_github_directory_exists(os.path.dirname(footer_path))
+
+            # Save directly to GitHub with proper message
+            self.save_to_github_if_empty(footer_path, str(footer.prettify()), "Save footer component")
+
             self.results['pages']['footer'] = {
                 'file': footer_path
             }
+            print(f"Footer component saved to {footer_path}")
 
         # Create layout file that includes header and footer
         if header and footer and not self.results['pages'].get('layout'):
-            layout_path = os.path.join(self.output_folder, "view/layout/layout.twig")
-            os.makedirs(os.path.dirname(layout_path), exist_ok=True)
+            # Generate GitHub path
+            layout_path = f"{self.folder_name}/view/layout/layout.twig"
+
+            # Ensure parent directory exists before saving
+            self.ensure_github_directory_exists(os.path.dirname(layout_path))
+
+            # Generate layout content
             layout_content = self.layout_render_component()
-            with open(layout_path, 'w', encoding='utf-8') as f:
-                f.write(layout_content)
+
+            # Save directly to GitHub with proper message
+            self.save_to_github_if_empty(layout_path, layout_content, "Save layout component")
+
             self.results['pages']['layout'] = {
                 'file': layout_path
             }
+            print(f"Layout component saved to {layout_path}")
 
 
-async def fetch_all_pages(url, output_folder, page_rules):
+async def fetch_all_pages(url, folder_name, page_rules, github_token=GITHUB_ACCESS_TOKEN,
+                          github_repo_name=GITHUB_REPO_FULLNAME):
     """Run async crawler to fetch all pages"""
     try:
+        # Validate GitHub parameters
+        if not github_token or not github_repo_name:
+            return {
+                "status": "error",
+                "message": "GitHub token and repository name are required",
+                "output_folder": folder_name
+            }
+
         page_manager = PageManager(
             base_url=url,
-            output_folder=output_folder,
-            page_rules=page_rules
+            folder_name=folder_name,
+            page_rules=page_rules,
+            github_token=github_token,
+            github_repo_name=github_repo_name
         )
 
         # Create client session with SSL verification disabled and timeout
@@ -424,21 +528,25 @@ async def fetch_all_pages(url, output_folder, page_rules):
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
         ) as session:
             # Start with the base URL
+            css_scan_success = await page_manager.scan_css_first(session, url)
+            if not css_scan_success:
+                print("Warning: CSS scanning was not successful, but continuing with page crawling")
+
             await page_manager.process_page(session, url)
 
         return {
             "status": "success",
-            "message": f"Website crawled: {url}",
-            "output_folder": output_folder
+            "message": f"Website crawled and saved to GitHub: {url}",
+            "output_folder": folder_name
         }
     except Exception as e:
-        logger.error(f"ERROR: Exception during crawl: {e}")
+        print(f"ERROR: Exception during crawl: {e}")
         import traceback
         traceback.print_exc()
         return {
             "status": "error",
             "message": f"Error crawling website: {str(e)}",
-            "output_folder": output_folder
+            "output_folder": folder_name
         }
 
 
@@ -466,7 +574,7 @@ async def crawl_website_task(job_id: str, url: str, folder_path: str, page_rules
         if result["status"] == "success":
             # Update job status on success
             active_jobs[job_id]["status"] = "completed"
-            active_jobs[job_id]["message"] = f"Successfully crawled website: {url}"
+            active_jobs[job_id]["message"] = f"Successfully crawled website and saved to GitHub: {url}"
         else:
             # Update job status on failure
             active_jobs[job_id]["status"] = "failed"

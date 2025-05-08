@@ -19,3 +19,8 @@ def clear_session():
     global current_base_dir, current_folder_path
     current_base_dir = None
     current_folder_path = None
+
+
+def normalize_github_path(file_path):
+    return file_path.replace('\\', '/').lstrip('/')
+
