@@ -21,7 +21,7 @@ router = APIRouter(
 class MenuPartRequest(BaseModel):
     folder_name: str = None
     menu_area: str  # homepage, header, footer
-    wrapper_selector: str
+    wrapper_classes: str
     options: Optional[Dict[str, Union[str, int]]] = None
 
 
@@ -41,8 +41,8 @@ async def menu_part_options():
 async def process_menu_part(request: MenuPartRequest):
     """Process the menu part with the selected option"""
 
-    if not request.menu_area or not request.wrapper_selector:
-        raise HTTPException(status_code=400, detail="menu_area and wrapper_selector are required")
+    if not request.menu_area or not request.wrapper_classes:
+        raise HTTPException(status_code=400, detail="menu_area and wrapper_classes are required")
 
     folder_name = current_folder_path
     if request.folder_name:
@@ -50,7 +50,7 @@ async def process_menu_part(request: MenuPartRequest):
     menu_part = MenuPart(folder_name)
 
     try:
-        result = menu_part.extract_menu(request.menu_area, request.wrapper_selector, request.options)
+        result = menu_part.extract_menu(request.menu_area, request.wrapper_classes, request.options)
         return {"status": "success", "message": f"Processed menu for {request.menu_area}", "result": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
@@ -67,7 +67,7 @@ class MenuPart:
         self.github = Github(self.github_token)
         self.repo = self.github.get_repo(self.github_repo_name)
 
-    def extract_menu(self, menu_area, wrapper_selector, options=None):
+    def extract_menu(self, menu_area, wrapper_classes, options=None):
         """Extract menu from the specified area and apply transformations"""
 
         if not self.base_dir:
@@ -85,21 +85,21 @@ class MenuPart:
                 return {"success": False, "message": "Template content not found"}
 
             # Process the menu
-            result = self.process_menu(template_content, wrapper_selector, file_path, 'home_tranning')
+            result = self.process_menu(template_content, wrapper_classes, file_path, 'home_tranning')
             return result or {"success": True, "message": "Processing completed"}
 
         except Exception as e:
             return {"success": False, "message": f"Error: {str(e)}"}
 
-    def process_menu(self, html, wrapper_selector, file_path, index_name=None):
+    def process_menu(self, html, wrapper_classes, file_path, index_name=None):
         """Process the menu HTML and create menu files"""
         potential_parents = []
         soup = BeautifulSoup(html, "html.parser")
 
         # Find elements by ID or class that match the wrapper selector
-        elements = soup.find_all(id=re.compile(wrapper_selector))
+        elements = soup.find_all(id=re.compile(wrapper_classes))
         if not elements:
-            elements = soup.find_all(class_=re.compile(wrapper_selector))
+            elements = soup.find_all(class_=re.compile(wrapper_classes))
 
         if elements:
             potential_parents.extend(elements)

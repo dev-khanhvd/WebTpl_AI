@@ -17,6 +17,11 @@ from agents.home_page import router as home_page_router
 from agents.category_page import router as category_page_router
 from agents.menu_part import router as menu_part_router
 from agents.product_detail_page import router as product_detail_router
+from agents.cart_page import router as cart_page_router
+from agents.checkout_page import router as checkout_page_router
+from agents.order_page import router as order_page_router
+from agents.album_page import router as album_page_router
+from agents.news_page import router as news_page_router
 app = FastAPI(
     title="Website Cloner API",
     description="API for cloning websites, filling code logic, and updating training data",
@@ -32,6 +37,11 @@ app.include_router(home_page_router)
 app.include_router(category_page_router)
 app.include_router(menu_part_router)
 app.include_router(product_detail_router)
+app.include_router(cart_page_router)
+app.include_router(checkout_page_router)
+app.include_router(order_page_router)
+app.include_router(album_page_router)
+app.include_router(news_page_router)
 
 class CrawlRequest(BaseModel):
     folder_name: str
@@ -138,4 +148,5 @@ async def update_embeddings():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

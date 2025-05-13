@@ -440,3 +440,25 @@ Lấy ra danh sách các cửa hàng đang còn hàng và hết hàng
 ```
 
 <figure><img src="../../.gitbook/assets/image (54).png" alt=""><figcaption></figcaption></figure>
+
+### Tag sản phẩm
+
+Tag sản phẩm là những từ khóa ngắn gọn dùng để phân loại và nhóm các sản phẩm có nội dung hoặc tính năng liên quan. Việc sử dụng tag giúp khách hàng dễ dàng tìm kiếm các sản phẩm cùng chủ đề, đồng thời cải thiện khả năng điều hướng và tăng hiệu quả SEO cho website.
+
+Dưới đây là cách thức lấy Tag sản phẩm:
+* Cách làm:
+  * B1. Lấy tối đa tag thuộc cùng 1 sản phẩm theo param itemId, theo type ở hàm getTags().
+  * B2. Kiểm tra có dữ liệu không (if getTags is not empty)
+  * B3. Vòng lặp hiển thị tag: link, tên tag
+
+```
+{% raw %}
+ {% set tags = getTags({'itemId':product.id,'type':'product'}) %}
+{% if (tags is not empty) %}
+    {% for t in tags %}
+        {{ t.viewLink }}
+        {{ t.name }}
+     {% endfor %}
+{% endif %}
+{% endraw %}
+```

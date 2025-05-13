@@ -391,24 +391,52 @@ class PageManager:
             meta_title = "promotion.metaTitle?:promotion.name"
             url = canonical_link = "promotion.canonicalLink"
             image = 'promotion.imageUri'
+        elif page_type == "order_cart":
+            meta_keywords = "translate('Giỏ hàng')"
+            meta_description = "translate('Giỏ hàng')"
+            meta_title = "translate('Giỏ hàng')"
+            variable = ''' {% set products = serviceCart().productList %}
+                           {% set totalCartMoney = serviceCart().totalMoney %}
+                           {% set latestProduct = products|last %}'''
+        elif page_type == "order_checkout":
+            meta_keywords = "translate('Thanh toán')"
+            meta_description = "translate('Thanh toán')"
+            meta_title = "translate('Thanh toán')"
+            variable = '''  {% set user = null %}
+                            {% set customer = null %}
+                            {% set point = 0 %}
+                            {% if(hasIdentity() is not empty) %}
+                                {% set user = getUser() %}
+                                {% set customer = getCustomerStore({
+                                    'mobile': user.mobile
+                                }) %}
+                                {% if customer.points > 0 %}
+                                    {% set point = customer.points %}
+                                {% endif %}
+                            {% elseif jsonDecode(getCookies('cod')) is not empty %}
+                                {% set user = jsonDecode(getCookies('cod')) %}
+                            {% endif %}
+                            {% set products = serviceCart().productList %}
+                            {% set totalCartMoney = serviceCart().totalMoney %}
+                            {% set quantity = serviceCart().totalQuantities %}'''
         else:
             pass  # Use defaults
 
         return (
                 "{%extends \"layout/layout\" %}\n"
                 "{%block meta %}\n"
-                "    {{ headTitle(" + page_title + ").setSeparator(' - ').setAutoEscape(false)|raw }}\n"
-                                                   "    <meta name=\"keywords\" content=\"{{ " + meta_keywords + " }}\">\n"
-                                                                                                                 "    <meta name=\"description\" content=\"{{ " + meta_description + " }}\">\n"
-                                                                                                                                                                                     "    <meta property=\"og:title\" content=\"{{ " + meta_title + " }}\">\n"
-                                                                                                                                                                                                                                                    "    <meta property=\"og:url\" content=\"{{ " + url + " }}\">\n"
-                                                                                                                                                                                                                                                                                                          "    <meta property=\"og:image\" content=\"{{ " + image + " }}\">\n"
-                                                                                                                                                                                                                                                                                                                                                                    "    <link rel=\"canonical\" href=\"{{ " + canonical_link + " }}\">\n"
-                                                                                                                                                                                                                                                                                                                                                                                                                                "{%endblock %}\n"
-                                                                                                                                                                                                                                                                                                                                                                                                                                "\n"
-                                                                                                                                                                                                                                                                                                                                                                                                                                "{%block body %}\n"
+                "{{ headTitle(" + page_title + ").setSeparator(' - ').setAutoEscape(false)|raw }}\n"
+                "<meta name=\"keywords\" content=\"{{ " + meta_keywords + " }}\">\n"
+                "<meta name=\"description\" content=\"{{ " + meta_description + " }}\">\n"
+                "<meta property=\"og:title\" content=\"{{ " + meta_title + " }}\">\n"                                                                               
+                "<meta property=\"og:url\" content=\"{{ " + url + " }}\">\n"
+                "<meta property=\"og:image\" content=\"{{ " + image + " }}\">\n"                                                                                                                                                                                                                                                                                    
+                "<link rel=\"canonical\" href=\"{{ " + canonical_link + " }}\">\n"
+                "{%endblock %}\n"
+                "\n"
+                "{%block body %}\n"
                 + str(variable) + "\n" + str(content.prettify()) + "\n"
-                                                                   "{%endblock %}\n").strip()
+                "{%endblock %}\n").strip()
 
     def layout_render_component(self):
         return ("""

@@ -14,9 +14,6 @@ https://python.langchain.com/docs/how_to/installation/
         pip install openai (Muốn tích hợp luôn OpenAI thì dùng lệnh này ) 
         pip install langchain-community
 
- ## Cài đăt streamlit (https://pypi.org/project/streamlit/)  
-    - Streamlit là một framework Python giúp tạo ứng dụng web nhanh chóng, chủ yếu dành cho machine learning và data science mà không cần dùng HTML, CSS hay JavaScript.
-
  ## Cài đặt env (Dùng để lưu cấu hình chung)  
         pip install python-dotenv  
         python -c "import os; from dotenv import load_dotenv; load_dotenv(); print(os.getenv('OPENAI_API_KEY'))" (Kiểm tra xem key có hoạt động không)
@@ -43,7 +40,7 @@ https://python.langchain.com/docs/how_to/installation/
     pip install llama-cpp-python sentence-transformers
     
     - Đang dùng all-mpnet-base-v2 để xử lý embedding 768 chiều
-	
+
 ## Kích hoạt môi trường ảo (Nếu là project checkout mới về)
 	python3.12 -m venv env
 	.\env\Scripts\activate
@@ -53,4 +50,3 @@ https://python.langchain.com/docs/how_to/installation/
 	
 ## Cài đặt thư viện từ requirements.txt
 	pip install -r requirements.txt
-	
