@@ -135,8 +135,8 @@ class NewsPage:
         content_soup = detect.detect_position_html(wrapper_classes, template_content, question, type, options,
                                                    index_name)
 
-        # if content_soup:
-        #     object_file = FolderManager(self.base_dir)
-        #     save_result = object_file.save_file(self.file_path, content_soup)
-        #     return {"success": True, "message": "Content detected and saved", "content_info": str(save_result)}
+        if content_soup:
+            object_file = FolderManager(self.base_dir)
+            save_result = object_file.save_file(self.file_path, content_soup)
+            return {"success": True, "message": "Content detected and saved", "content_info": str(save_result)}
         return {"success": False, "message": "No content detected"}
