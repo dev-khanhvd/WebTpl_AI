@@ -8,7 +8,7 @@ class ElasticsearchDB:
         if username and password:
             self.client = Elasticsearch(
                 [host],
-                # basic_auth=(username, password),
+                basic_auth=(username, password),
                 request_timeout=30,
                 verify_certs=False
             )
