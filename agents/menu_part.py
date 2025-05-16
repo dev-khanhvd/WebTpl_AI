@@ -119,8 +119,7 @@ class MenuPart:
         # Process product category menu
         menu_html1 = str(parent_wrapper)
         menu_file_path1 = normalize_github_path(self.base_dir + "/" + self.template_mapping.get('menu', ""))
-        # question1 = 'Danh mục sản phẩm'
-        question1 = 'Danh mục tự tạo'
+        question1 = 'Danh mục sản phẩm'
         menu_result_1 = embedding.process_question(question1, 'home_menu_product_category', menu_html1,None, index_name)
 
         #Save the product category menu file
