@@ -299,7 +299,7 @@ class CategoryPage:
     def detect_block_fill_code(self, template_content, wrapper_classes: str, question: str, type=None,
                                options=None):
         detect = DetectHtml(self.base_dir)
-        index_name = "category_tranning"
+        index_name = "product_category_tranning"
         content_soup = detect.detect_position_html(wrapper_classes, template_content, question, type, options,
                                                    index_name)
 
