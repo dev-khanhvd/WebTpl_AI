@@ -109,7 +109,7 @@ class NewsPage:
                 case 2:
                     question = "Hiển thị danh sách các bài viết khác có cùng chủ đề"
                     result = self.detect_block_fill_code(template_content, wrapper_classes, question,
-                                                         'news_related_items_block')
+                                                         'news_related_items_block', options)
                 case 3:
                     question = "Tag bài viết là các từ khóa ngắn gọn dùng để nhóm các bài viết"
                     result = self.detect_block_fill_code(template_content, wrapper_classes, question,
