@@ -1,11 +1,17 @@
 import json
 import base64
-from github import Github
+import asyncio
+from github import Github, GithubException
 from config import CONTENT_TEMPLATE_JSON, GITHUB_ACCESS_TOKEN, GITHUB_REPO_FULLNAME, BASE_BRANCH
 import requests
 from urllib.parse import urlparse, urljoin
 import uuid
 
+file_write_locks = {}
+def get_file_lock(file_path: str):
+    if file_path not in file_write_locks:
+        file_write_locks[file_path] = asyncio.Lock()
+    return file_write_locks[file_path]
 
 class FolderManager:
     def __init__(self, base_branch=BASE_BRANCH):
@@ -21,7 +27,7 @@ class FolderManager:
             self.base_branch = self.repo.default_branch
             print(f"Using default branch: {self.base_branch}")
 
-    def create_main_folder(self, folder_name=None, remove_folder=False):
+    async def create_main_folder(self, folder_name=None, remove_folder=False):
         """
         Create the main project folder
         If folder_name is provided, use it; otherwise generate a unique name
@@ -32,8 +38,8 @@ class FolderManager:
 
         folder_path = folder_name.upper()
 
-        if remove_folder:
-            return self.delete_directory(folder_path)
+        # if remove_folder:
+        #     return self.delete_directory(folder_path)
 
         # Check if folder exists in repo
         try:
@@ -52,7 +58,7 @@ class FolderManager:
 
         return folder_path
 
-    def create_childs_folder(self, base_path, structure):
+    async def create_childs_folder(self, base_path, structure):
         """Create child folders and files based on template structure in GitHub repo"""
         if not base_path:
             return False
@@ -97,7 +103,7 @@ class FolderManager:
                 # Handle sub-items (files or folders)
                 if isinstance(value, dict):
                     # Recursive create sub-folders
-                    self.create_childs_folder(folder_path, value)
+                    await self.create_childs_folder(folder_path, value)
                 elif isinstance(value, list):
                     # Create empty files
                     for file in value:
@@ -193,26 +199,61 @@ class FolderManager:
             except Exception as e:
                 print(f"Error creating CSS file: {e}")
 
-    def save_file(self, file_path, content):
-        """Save content to a file in GitHub repo"""
-        if content:
-            try:
-                self.repo.create_file(
-                    file_path,
-                    f"Create file at {file_path}",
-                    str(content.prettify(formatter=None)),
-                    branch=self.base_branch
-                )
-            except Exception as e:
-                # File might already exist, try to update it
+    async def save_file(self, file_path, content):
+        if not content:
+            return
+
+        lock = get_file_lock(file_path)
+        async with lock:
+            formatted_content = str(content.prettify(formatter=None))
+            for attempt in range(3):
+                """Save content to a file in GitHub repo"""
                 try:
-                    contents = self.repo.get_contents(file_path, ref=self.base_branch)
-                    self.repo.update_file(
-                        contents.path,
-                        f"Update file at {file_path}",
-                        str(content.prettify(formatter=None)),
-                        contents.sha,
+                    self.repo.create_file(
+                        file_path,
+                        f"Create file at {file_path}",
+                        formatted_content,
                         branch=self.base_branch
                     )
-                except Exception as e:
-                    print(f"Error saving file {file_path}: {e}")
+                    print(f"✅ Created file: {file_path}")
+                    return
+                except GithubException as e:
+                    if e.status == 422:
+                        try:
+                            contents = self.repo.get_contents(file_path, ref=self.base_branch)
+                            self.repo.update_file(
+                                contents.path,
+                                f"Update file at {file_path}",
+                                formatted_content,
+                                contents.sha,
+                                branch=self.base_branch
+                            )
+                            print(f"✅ Updated file: {file_path}")
+                            return
+                        except GithubException as e2:
+                            if e2.status == 409 and attempt < 2:
+                                print(f"Conflict detected, retrying... ({attempt + 1})")
+                                await asyncio.sleep(1)
+                                continue
+                            print(f"Update error: {e2}")
+                            return
+                        else:
+                            print(f"Create error: {e}")
+                            return
+
+    async def remove_gitkeep_files(self, folder_path=""):
+        try:
+            contents = self.repo.get_contents(folder_path or "", ref=self.base_branch)
+            for item in contents:
+                if item.type == "file" and item.name == ".gitkeep":
+                    self.repo.delete_file(
+                        path=item.path,
+                        message=f"Remove .gitkeep in {item.path}",
+                        sha=item.sha,
+                        branch=self.base_branch
+                    )
+                    print(f"Removed: {item.path}")
+                elif item.type == "dir":
+                    await self.remove_gitkeep_files(item.path)
+        except Exception as e:
+            print(f" Error while removing .gitkeep in {folder_path}: {e}")

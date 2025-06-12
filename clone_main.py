@@ -75,7 +75,7 @@ async def crawl_website(request: CrawlRequest, background_tasks: BackgroundTasks
 
     # Create folder structure
     folder_manager = FolderManager(base_dir)
-    folder_path = folder_manager.create_main_folder(request.folder_name)
+    folder_path = await folder_manager.create_main_folder(request.folder_name)
 
     if not folder_path:
         raise HTTPException(status_code=400, detail="Folder deleted or not found")
@@ -84,8 +84,9 @@ async def crawl_website(request: CrawlRequest, background_tasks: BackgroundTasks
 
     # Create folder structure based on template
     template_structure = json.loads(FOLDER_STRUCTURE)
-    folder_manager.create_childs_folder(folder_path, template_structure)
+    await folder_manager.create_childs_folder(folder_path, template_structure)
 
+    await folder_manager.remove_gitkeep_files(folder_path)
     # Set up rule based on request
     if request.rule_type.lower() == "haravan":
         rule = HaravanRule()
